@@ -1,0 +1,60 @@
+{
+  "name": "@aureon/sdk",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for AUREON Financial Compass on Robinhood Chain",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "examples",
+    "config",
+    "fixtures"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test tests/**/*.test.ts",
+    "bench": "tsx benchmarks/client-throughput.ts",
+    "example:quickstart": "tsx examples/quickstart/main.ts",
+    "example:market": "tsx examples/market-event/main.ts",
+    "example:e2e": "tsx examples/e2e-vault-flow/main.ts",
+    "example:e2e-policy": "tsx examples/e2e-policy-rebalance/main.ts",
+    "cli": "tsx cli/aureon-cli.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "aureon",
+    "robinhood-chain",
+    "fco",
+    "financial-compass",
+    "sdk",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/buildaureon/aureon-sdk"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "viem": "^2.55.1"
+  }
+}
