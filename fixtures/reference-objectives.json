@@ -1,0 +1,18 @@
+{
+  "objectives": [
+    {
+      "name": "Maintain 20% Stable Assets",
+      "kind": "stable_allocation",
+      "targetWeight": 0.2,
+      "tolerance": 0.02,
+      "priority": "high"
+    },
+    {
+      "name": "Balanced Stock Token Sleeve",
+      "kind": "balanced_portfolio",
+      "targetWeight": 0.55,
+      "tolerance": 0.05,
+      "priority": "medium"
+    }
+  ]
+}
