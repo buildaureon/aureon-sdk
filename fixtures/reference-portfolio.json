@@ -1,0 +1,10 @@
+{
+  "portfolioId": "portfolio_operator_primary",
+  "positions": [
+    { "symbol": "USDG", "category": "stable", "quantity": 24000, "markPriceUsd": 1 },
+    { "symbol": "NVDA", "category": "stock_token", "quantity": 45, "markPriceUsd": 920 },
+    { "symbol": "AAPL", "category": "stock_token", "quantity": 80, "markPriceUsd": 210 },
+    { "symbol": "GOOGL", "category": "stock_token", "quantity": 60, "markPriceUsd": 175 },
+    { "symbol": "ETH", "category": "gas", "quantity": 8.5, "markPriceUsd": 3400 }
+  ]
+}
