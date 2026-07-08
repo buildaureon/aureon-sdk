@@ -1,0 +1,10 @@
+{
+  "defaultBaseUrl": "https://api.aureonlabs.network",
+  "localBaseUrl": "http://127.0.0.1:8787",
+  "appUrl": "https://app.aureonlabs.network",
+  "product": "AUREON",
+  "chain": "Robinhood Chain Testnet",
+  "chainId": 46630,
+  "sdkPackage": "@aureon/sdk",
+  "sdkVersion": "0.1.0"
+}
