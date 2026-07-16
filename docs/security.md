@@ -1,6 +1,6 @@
 # Security Model and Practices
 
-This document outlines the security architecture of `@aureon/sdk`, its integration with Smart Vault smart contracts, and practices for secure production environments.
+This document outlines the security architecture of `@buildaureon/sdk`, its integration with Smart Vault smart contracts, and practices for secure production environments.
 
 ---
 

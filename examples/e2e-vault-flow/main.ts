@@ -9,7 +9,7 @@
  *   AUREON_API_KEY   from backend/.env AUREON_API_KEYS (first key)
  *   AUREON_E2E_KEY   hex private key (defaults to vault-deployer.key)
  *
- *   pnpm --filter @aureon/sdk exec tsx examples/e2e-vault-flow/main.ts
+ *   pnpm --filter @buildaureon/sdk exec tsx examples/e2e-vault-flow/main.ts
  */
 
 import { readFileSync, existsSync } from "node:fs";

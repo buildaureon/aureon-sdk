@@ -1,7 +1,7 @@
 /**
- * @fileoverview Public exports for @aureon/sdk.
+ * @fileoverview Public exports for @buildaureon/sdk.
  *
- * Import from `@aureon/sdk` in utility apps, scripts, and integrations.
+ * Import from `@buildaureon/sdk` in utility apps, scripts, and integrations.
  */
 
 export {

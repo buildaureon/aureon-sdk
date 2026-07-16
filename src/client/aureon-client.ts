@@ -1,5 +1,5 @@
 /**
- * @fileoverview AureonClient: primary entry point for @aureon/sdk.
+ * @fileoverview AureonClient: primary entry point for @buildaureon/sdk.
  *
  * Typed HTTP client for the hosted AUREON API. Wallet Bearer sessions identify
  * the operator; `apiKey` (`X-Aureon-Api-Key`) unlocks product access.

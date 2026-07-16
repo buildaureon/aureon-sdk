@@ -1,12 +1,12 @@
 /**
- * @fileoverview Quickstart example for @aureon/sdk against the AUREON API.
+ * @fileoverview Quickstart example for @buildaureon/sdk against the AUREON API.
  *
  * Env:
  *   AUREON_API_KEY  : product key (required on hosted API)
  *   AUREON_TOKEN    : wallet Bearer session
  *   AUREON_API_URL  : optional override (defaults to https://api.aureonlabs.network)
  *
- *   pnpm --filter @aureon/sdk example:quickstart
+ *   pnpm --filter @buildaureon/sdk example:quickstart
  */
 
 import {

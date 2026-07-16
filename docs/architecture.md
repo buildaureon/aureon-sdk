@@ -1,6 +1,6 @@
 # Architecture Guide
 
-This document provides a detailed breakdown of the AUREON system architecture. It outlines the components, data models, state machines, and cryptographic boundaries that govern the `@aureon/sdk` and its integration with the hosted AUREON API and the Robinhood Chain.
+This document provides a detailed breakdown of the AUREON system architecture. It outlines the components, data models, state machines, and cryptographic boundaries that govern the `@buildaureon/sdk` and its integration with the hosted AUREON API and the Robinhood Chain.
 
 ---
 
@@ -20,7 +20,7 @@ The system is organized into three major layers: the **Client Layer** (where the
 graph TB
   subgraph ClientBoundary [Client / Host Application Boundary]
     App[Agent / Operator Script]
-    SDK["@aureon/sdk Client"]
+    SDK["@buildaureon/sdk Client"]
     Session[Session Provider]
     Signer[Local Wallet Signer]
 
@@ -62,7 +62,7 @@ graph TB
 ```
 
 ### 2.1 The Client Layer
-*   **AureonClient**: The main class exported by `@aureon/sdk`. It coordinates REST requests, implements pre-flight input validation, maps HTTP errors to TypeScript classes, and manages retries.
+*   **AureonClient**: The main class exported by `@buildaureon/sdk`. It coordinates REST requests, implements pre-flight input validation, maps HTTP errors to TypeScript classes, and manages retries.
 *   **Session Token Provider**: A stateful container that maintains the ephemeral JSON Web Token (JWT) retrieved during wallet signature verification.
 *   **Local Wallet Signer**: A private key management module (e.g. Viem, Ethers, or an HSM) controlled by the integrator. It signs transaction steps returned by the vault preparation endpoints.
 
@@ -189,7 +189,7 @@ flowchart TD
 Integrators must understand the boundary lines between AUREON infrastructure and host applications:
 
 *   **API Key Scope**: API keys authenticate gateway access but cannot perform asset transfers. Compromising an API key does not give access to vault funds because withdrawals require direct owner signatures.
-*   **Signature Isolation**: Transactions are signed client-side. `@aureon/sdk` does not expose methods for loading private keys, keeping key storage isolated.
+*   **Signature Isolation**: Transactions are signed client-side. `@buildaureon/sdk` does not expose methods for loading private keys, keeping key storage isolated.
 *   **Keeper Swaps**: Keepers can only execute swaps within the allowlisted trading paths of the smart vault. They cannot transfer vault assets to third-party addresses.
 
 ---

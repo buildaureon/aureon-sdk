@@ -29,7 +29,7 @@ Cross-links: [auth](./auth.md) | [architecture](./architecture.md) | [error-mode
 import {
   createAureonClient,
   AureonClient,
-} from "@aureon/sdk";
+} from "@buildaureon/sdk";
 
 const aureon = createAureonClient({
   // baseUrl defaults to https://api.aureonlabs.network
@@ -537,7 +537,7 @@ async listExecutions(objectiveId?: string): Promise<ExecutionReceipt[]>
 ## 8. Session helper
 
 ```ts
-import { createSessionTokenProvider } from "@aureon/sdk";
+import { createSessionTokenProvider } from "@buildaureon/sdk";
 
 const session = createSessionTokenProvider(initialToken?: string | null);
 session.getAccessToken(); // () => string | null

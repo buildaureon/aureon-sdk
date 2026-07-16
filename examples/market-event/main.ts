@@ -3,7 +3,7 @@
  *
  * Env: AUREON_API_KEY, AUREON_TOKEN, optional AUREON_API_URL
  *
- *   pnpm --filter @aureon/sdk example:market
+ *   pnpm --filter @buildaureon/sdk example:market
  */
 
 import {

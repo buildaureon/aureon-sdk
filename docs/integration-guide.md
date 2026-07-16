@@ -1,6 +1,6 @@
 # Production Integration Guide
 
-This guide details how to integrate `@aureon/sdk` into server-side agents, automated rebalancing scripts, and frontend user interfaces.
+This guide details how to integrate `@buildaureon/sdk` into server-side agents, automated rebalancing scripts, and frontend user interfaces.
 
 ---
 
@@ -22,7 +22,7 @@ flowchart TD
 Set up the client, leveraging environment variables for configuration options.
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@aureon/sdk";
+import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
 
 const session = createSessionTokenProvider(
   typeof localStorage !== "undefined"
@@ -168,7 +168,7 @@ Log JSON payloads to persistent logging collectors.
 
 ```ts
 import winston from "winston";
-import { createAureonClient } from "@aureon/sdk";
+import { createAureonClient } from "@buildaureon/sdk";
 
 const logger = winston.createLogger({
   level: "info",

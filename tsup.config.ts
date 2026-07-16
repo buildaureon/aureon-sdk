@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 /**
- * Build configuration for @aureon/sdk.
+ * Build configuration for @buildaureon/sdk.
  * Emits ESM + declaration files from the public entrypoint.
  */
 export default defineConfig({

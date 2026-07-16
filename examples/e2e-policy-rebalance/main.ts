@@ -1,7 +1,7 @@
 /**
  * Live e2e: deposit flex + Auto maintain 20% TSLA (surplus sell / deficit buy).
  *
- *   pnpm --filter @aureon/sdk exec tsx examples/e2e-policy-rebalance/main.ts
+ *   pnpm --filter @buildaureon/sdk exec tsx examples/e2e-policy-rebalance/main.ts
  */
 
 import { readFileSync, existsSync } from "node:fs";

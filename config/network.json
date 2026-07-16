@@ -5,6 +5,6 @@
   "product": "AUREON",
   "chain": "Robinhood Chain Testnet",
   "chainId": 46630,
-  "sdkPackage": "@aureon/sdk",
+  "sdkPackage": "@buildaureon/sdk",
   "sdkVersion": "0.1.0"
 }

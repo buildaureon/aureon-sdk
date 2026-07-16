@@ -1,5 +1,5 @@
 {
-  "name": "@aureon/sdk",
+  "name": "@buildaureon/sdk",
   "version": "0.1.0",
   "description": "Official TypeScript SDK for AUREON Financial Compass on Robinhood Chain",
   "type": "module",

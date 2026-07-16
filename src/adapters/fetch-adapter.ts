@@ -20,5 +20,5 @@ export function mergeHeaders(
 }
 
 export function userAgentHeader(version: string): Record<string, string> {
-  return { "X-Aureon-SDK": `@aureon/sdk/${version}` };
+  return { "X-Aureon-SDK": `@buildaureon/sdk/${version}` };
 }

@@ -96,7 +96,7 @@ Upon successful signature recovery, the gateway issues a JSON Web Token containi
 Ideal for background cron daemons, keepers, and automated scripts.
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@aureon/sdk";
+import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { mainnet } from "viem/chains";
@@ -137,7 +137,7 @@ async function authenticateAgent() {
 Useful for traditional Node.js servers or scripts using Ethers.
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@aureon/sdk";
+import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
 import { Wallet } from "ethers";
 
 async function authenticateEthers() {
@@ -166,7 +166,7 @@ async function authenticateEthers() {
 Suitable for operator portals and user-facing dashboards.
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@aureon/sdk";
+import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
 
 async function loginBrowser() {
   if (!window.ethereum) throw new Error("No provider found");

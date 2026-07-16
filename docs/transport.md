@@ -1,6 +1,6 @@
 # Transport Layer Reference
 
-This document describes the transport layer of `@aureon/sdk`, implemented in `src/transport/http.ts`.
+This document describes the transport layer of `@buildaureon/sdk`, implemented in `src/transport/http.ts`.
 
 ---
 
@@ -39,7 +39,7 @@ Every HTTP request sent by the SDK contains these default headers:
 |--------|----------|---------------|---------|
 | `Accept` | Yes | `application/json` | Specifies the accepted media type. |
 | `Content-Type` | Optional | `application/json` | Specifies the payload format (attached if a request body is present). |
-| `X-Aureon-SDK` | Yes | `@aureon/sdk/0.1.0` | Identifies client package version. |
+| `X-Aureon-SDK` | Yes | `@buildaureon/sdk/0.1.0` | Identifies client package version. |
 | `X-Aureon-Api-Key` | Optional | `api_key_abc123` | Sent if the client is configured with an API key. |
 | `Authorization` | Optional | `Bearer token_xyz` | Session JWT, attached if a token provider is active. |
 

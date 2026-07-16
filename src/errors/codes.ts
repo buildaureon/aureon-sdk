@@ -1,5 +1,5 @@
 /**
- * @fileoverview Stable machine-readable error codes for @aureon/sdk.
+ * @fileoverview Stable machine-readable error codes for @buildaureon/sdk.
  */
 
 export type AureonErrorCode =

@@ -1,6 +1,6 @@
 # Detailed Error Model and Diagnostics
 
-This document outlines the error classification system used by `@aureon/sdk`. It provides field specifications, JSON payloads returned by the hosted API, and diagnostic patterns for production environments.
+This document outlines the error classification system used by `@buildaureon/sdk`. It provides field specifications, JSON payloads returned by the hosted API, and diagnostic patterns for production environments.
 
 ---
 
@@ -110,7 +110,7 @@ Returned when requests exceed rate limits.
 Integrators can register a logger interface during client construction to track network requests, retries, and errors in production.
 
 ```ts
-import { createAureonClient, AureonLogger } from "@aureon/sdk";
+import { createAureonClient, AureonLogger } from "@buildaureon/sdk";
 
 const productionLogger: AureonLogger = {
   debug(msg, ctx) { console.debug(`[DEBUG] ${msg}`, ctx || ""); },
@@ -156,7 +156,7 @@ When writing tests for your agent rebalancing scripts, you can assert error hand
 ```ts
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { AureonClient, AureonValidationError, isAureonError } from "@aureon/sdk";
+import { AureonClient, AureonValidationError, isAureonError } from "@buildaureon/sdk";
 
 describe("SDK Error Handling Tests", () => {
   it("should throw AureonValidationError on empty objective name", async () => {

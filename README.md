@@ -18,7 +18,7 @@ Financial Compass, capital health, and verified restore plans: one typed integra
 <br />
 
 ```bash
-pnpm add @aureon/sdk
+pnpm add @buildaureon/sdk
 ```
 
 [Quickstart](#quickstart) · [Authentication](#authentication) · [API Surface](#api-surface) · [Docs](#documentation)
@@ -76,7 +76,7 @@ AUREON introduces **Financial Compass Objectives (FCOs)** as execution primitive
 ```mermaid
 flowchart TD
   subgraph Public [Public Node / Operator App]
-    SDK["@aureon/sdk (TypeScript)"]
+    SDK["@buildaureon/sdk (TypeScript)"]
     Signer[Wallet Signer / Viem]
   end
   subgraph Cloud [Hosted Ingress]
@@ -111,13 +111,13 @@ Add the package to your project using a package manager:
 
 ```bash
 # Using pnpm
-pnpm add @aureon/sdk
+pnpm add @buildaureon/sdk
 
 # Using npm
-npm install @aureon/sdk
+npm install @buildaureon/sdk
 
 # Using yarn
-yarn add @aureon/sdk
+yarn add @buildaureon/sdk
 ```
 
 ---
@@ -192,7 +192,7 @@ sequenceDiagram
 Initialize the SDK, retrieve a signing nonce, verify the signature, and sync wallet positions:
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@aureon/sdk";
+import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
 import { privateKeyToAccount } from "viem/accounts";
 import { createWalletClient, http } from "viem";
 
@@ -243,7 +243,7 @@ Bearer sessions scope data operations to a specific wallet. The SDK client obtai
 The `createSessionTokenProvider` manager handles token resolution and injection. It can be passed directly as a resolver function:
 
 ```ts
-import { createSessionTokenProvider } from "@aureon/sdk";
+import { createSessionTokenProvider } from "@buildaureon/sdk";
 
 const session = createSessionTokenProvider(process.env.AUREON_TOKEN ?? null);
 
@@ -444,7 +444,7 @@ When `maxRetries` is greater than `0`, the client retries failed requests if it 
 AUREON methods throw custom error instances. Wrap calls in a try/catch block and use `isAureonError` to handle them:
 
 ```ts
-import { isAureonError } from "@aureon/sdk";
+import { isAureonError } from "@buildaureon/sdk";
 
 try {
   const objective = await aureon.getObjective("missing_id");
@@ -477,19 +477,19 @@ export AUREON_API_KEY=your_key
 export AUREON_TOKEN=your_bearer_token
 
 # Verify connection
-pnpm --filter @aureon/sdk cli ping
+pnpm --filter @buildaureon/sdk cli ping
 
 # Fetch current account metadata
-pnpm --filter @aureon/sdk cli me
+pnpm --filter @buildaureon/sdk cli me
 
 # Synchronize current on-chain balances
-pnpm --filter @aureon/sdk cli sync
+pnpm --filter @buildaureon/sdk cli sync
 
 # Print Capital Book portfolio weights
-pnpm --filter @aureon/sdk cli portfolio
+pnpm --filter @buildaureon/sdk cli portfolio
 
 # List all registered objectives
-pnpm --filter @aureon/sdk cli objectives
+pnpm --filter @buildaureon/sdk cli objectives
 ```
 
 ---

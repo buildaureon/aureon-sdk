@@ -1,5 +1,5 @@
 /**
- * @fileoverview Validation unit tests for @aureon/sdk.
+ * @fileoverview Validation unit tests for @buildaureon/sdk.
  */
 
 import assert from "node:assert/strict";

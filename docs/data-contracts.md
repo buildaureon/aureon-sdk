@@ -1,6 +1,6 @@
 # Data Contracts Reference
 
-This document defines the field-level data contracts used across `@aureon/sdk`. These structures are exported directly from `src/types/*` and match the JSON schemas returned by the hosted AUREON API.
+This document defines the field-level data contracts used across `@buildaureon/sdk`. These structures are exported directly from `src/types/*` and match the JSON schemas returned by the hosted AUREON API.
 
 Cross-links: [Client API Reference](./client-api.md) | [Architecture Guide](./architecture.md) | [Authentication Guide](./auth.md) | [Integration Guide](./integration-guide.md)
 

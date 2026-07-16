@@ -2,12 +2,12 @@
  * @fileoverview Minimal CLI against the AUREON API.
  *
  * Usage:
- *   pnpm --filter @aureon/sdk cli ping
- *   pnpm --filter @aureon/sdk cli login   # local preview only (devLogin)
- *   pnpm --filter @aureon/sdk cli me
- *   pnpm --filter @aureon/sdk cli portfolio
- *   pnpm --filter @aureon/sdk cli sync
- *   pnpm --filter @aureon/sdk cli objectives
+ *   pnpm --filter @buildaureon/sdk cli ping
+ *   pnpm --filter @buildaureon/sdk cli login   # local preview only (devLogin)
+ *   pnpm --filter @buildaureon/sdk cli me
+ *   pnpm --filter @buildaureon/sdk cli portfolio
+ *   pnpm --filter @buildaureon/sdk cli sync
+ *   pnpm --filter @buildaureon/sdk cli objectives
  *
  * Env:
  *   AUREON_API_URL   — defaults to https://api.aureonlabs.network
