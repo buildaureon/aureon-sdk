@@ -7,7 +7,7 @@
 The official TypeScript HTTP client for the AUREON API.
 Financial Compass, capital health, and verified restore plans: one typed integration surface.
 
-<br />
+**Contract Address (CA):** `0xd293291060334d42e5dbea6fb854c231af527777`
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
