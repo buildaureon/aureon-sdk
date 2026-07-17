@@ -13,8 +13,10 @@ export interface AureonClientOptions {
   baseUrl?: string;
   /**
    * Product API key sent as `X-Aureon-Api-Key` on every request.
-   * Required for SDK / CLI / code when keys are enforced and there is no
-   * wallet Bearer yet. The operator utility uses wallet Bearer only.
+   * Operator-issued keys (from the Developers console) also identify the
+   * bound wallet for control-plane calls — no Bearer required.
+   * Env bootstrap keys unlock product access only; they do not set identity.
+   * The operator utility uses wallet Bearer only.
    */
   apiKey?: string | null;
   /**
