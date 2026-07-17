@@ -92,7 +92,11 @@ export interface UpdateObjectiveInput {
   tolerance?: number;
   maxRiskScore?: number;
   reinvestRatio?: number;
-  targetSymbol?: string | null;
+  /**
+   * @deprecated Rejected on update; target token is fixed at create.
+   * Recreate the objective to track a different holding.
+   */
+  targetSymbol?: never;
   /**
    * @deprecated Rejected on update; mode is fixed at create to avoid restore-flow issues.
    * Recreate the objective to switch Manual ↔ Automatic.
