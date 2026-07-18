@@ -11,8 +11,12 @@
  *
  * Env:
  *   AUREON_API_URL   — defaults to https://api.aureonlabs.network
- *   AUREON_API_KEY   — product key (X-Aureon-Api-Key)
- *   AUREON_TOKEN     — wallet Bearer session
+ *   AUREON_API_KEY   — issued developer key (identifies wallet) or env bootstrap key
+ *   AUREON_TOKEN     — optional wallet Bearer (required only with env bootstrap keys)
+ *
+ * Issued keys from the Developers console work alone for me/portfolio/sync/objectives.
+ * Env bootstrap keys (`AUREON_API_KEYS` on the server) still need AUREON_TOKEN.
+ * Private keys are only needed to broadcast on-chain deposit/withdraw txs — not for this CLI.
  */
 
 import {
@@ -34,11 +38,13 @@ function client() {
   });
 }
 
-async function requireAuth(): Promise<ReturnType<typeof client>> {
+async function requireProductAccess(): Promise<ReturnType<typeof client>> {
   const aureon = client();
-  if (session.getAccessToken()) return aureon;
+  if (process.env.AUREON_API_KEY?.trim() || session.getAccessToken()) {
+    return aureon;
+  }
   throw new Error(
-    "No session. Set AUREON_TOKEN (wallet Bearer) or run a wallet verify flow in your app."
+    "Set AUREON_API_KEY (issued developer key preferred) or AUREON_TOKEN (wallet Bearer)."
   );
 }
 
@@ -59,7 +65,7 @@ async function main(): Promise<void> {
         walletAddress: login.walletAddress,
         expiresAt: login.expiresAt,
         mode: login.mode ?? "session",
-        hint: "devLogin is for local preview APIs only. Export AUREON_TOKEN for later commands.",
+        hint: "devLogin is for local preview APIs only. Prefer an issued AUREON_API_KEY on production.",
         token: login.token,
       });
     } catch (error) {
@@ -67,19 +73,19 @@ async function main(): Promise<void> {
         ? `${error.code}: ${error.message}`
         : String(error);
       throw new Error(
-        `devLogin failed (${detail}). Use wallet verify + AUREON_TOKEN against the hosted API.`
+        `devLogin failed (${detail}). On production use an issued AUREON_API_KEY or wallet verify + AUREON_TOKEN.`
       );
     }
     return;
   }
 
   if (command === "me") {
-    console.log(await (await requireAuth()).me());
+    console.log(await (await requireProductAccess()).me());
     return;
   }
 
   if (command === "portfolio") {
-    const portfolio = await (await requireAuth()).getPortfolio();
+    const portfolio = await (await requireProductAccess()).getPortfolio();
     console.log({
       totalNotionalUsd: formatUsd(portfolio.totalNotionalUsd),
       stableWeight: formatWeight(portfolio.stableWeight),
@@ -89,7 +95,7 @@ async function main(): Promise<void> {
   }
 
   if (command === "sync") {
-    const result = await (await requireAuth()).syncPortfolio();
+    const result = await (await requireProductAccess()).syncPortfolio();
     console.log({
       chainId: result.chainId,
       skippedZero: result.skippedZero,
@@ -100,7 +106,7 @@ async function main(): Promise<void> {
   }
 
   if (command === "objectives") {
-    console.log(await (await requireAuth()).listObjectives());
+    console.log(await (await requireProductAccess()).listObjectives());
     return;
   }
 
