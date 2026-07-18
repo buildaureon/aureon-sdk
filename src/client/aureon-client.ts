@@ -1,8 +1,10 @@
 /**
  * @fileoverview AureonClient: primary entry point for @buildaureon/sdk.
  *
- * Typed HTTP client for the hosted AUREON API. Wallet Bearer sessions identify
- * the operator; `apiKey` (`X-Aureon-Api-Key`) unlocks product access.
+ * Typed HTTP client for the hosted AUREON API. Operator-issued API keys
+ * (`X-Aureon-Api-Key`) identify the bound wallet for control-plane calls;
+ * optional wallet Bearer sessions also work (Bearer wins when both are sent).
+ * Env bootstrap keys unlock product access only.
  *
  * Objectives default to Automatic automation mode. Vault deposit and withdraw
  * are prepare-calldata steps for wallet signing; not server-side broadcasts.
@@ -178,10 +180,12 @@ export class AureonClient {
     address: string;
     message: string;
     signature: string;
+    inviteCode?: string;
   }): Promise<AuthSessionResponse> {
     const address = input.address?.trim();
     const message = input.message?.trim();
     const signature = input.signature?.trim();
+    const inviteCode = input.inviteCode?.trim();
     if (!address || !message || !signature) {
       throw new AureonValidationError(
         "address, message, and signature are required"
@@ -189,7 +193,7 @@ export class AureonClient {
     }
     return requestJson(this.transport, ENDPOINTS.authVerify, {
       method: "POST",
-      body: { address, message, signature },
+      body: { address, message, signature, inviteCode },
     });
   }
 
@@ -247,7 +251,7 @@ export class AureonClient {
 
   /**
    * Applies a partial update to an objective policy or metadata.
-   * Does **not** accept `automationMode` (mode is locked at create).
+   * Does **not** accept `automationMode` or `targetSymbol` (both locked at create).
    * Auth required.
    */
   async updateObjective(
