@@ -105,6 +105,11 @@ export function normalizeUpdateObjectiveInput(
       "automationMode cannot be changed after create: recreate the objective instead"
     );
   }
+  if ((input as { targetSymbol?: unknown }).targetSymbol !== undefined) {
+    throw new AureonValidationError(
+      "targetSymbol cannot be changed after create: recreate the objective instead"
+    );
+  }
   return next;
 }
 
