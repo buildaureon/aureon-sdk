@@ -19,7 +19,7 @@ function baseTransport(
   overrides: Partial<TransportOptions> = {}
 ): TransportOptions {
   return {
-    baseUrl: "http://127.0.0.1:8787",
+    baseUrl: "https://api.aureonlabs.network",
     fetchImpl,
     headers: {},
     timeoutMs: 5_000,
