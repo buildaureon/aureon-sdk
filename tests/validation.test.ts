@@ -49,6 +49,20 @@ test("normalizeUpdateObjectiveInput rejects automationMode changes", () => {
   );
 });
 
+test("normalizeUpdateObjectiveInput rejects targetSymbol changes", () => {
+  assert.throws(
+    () =>
+      normalizeUpdateObjectiveInput({
+        targetSymbol: "TSLA",
+      } as Parameters<typeof normalizeUpdateObjectiveInput>[0] & {
+        targetSymbol: "TSLA";
+      }),
+    (err: unknown) =>
+      err instanceof AureonValidationError &&
+      /targetSymbol cannot be changed/i.test(err.message)
+  );
+});
+
 test("buildPolicySummary includes target and tolerance", () => {
   const summary = buildPolicySummary("stable_allocation", 0.2, 0.02);
   assert.match(summary, /20\.0%/);
