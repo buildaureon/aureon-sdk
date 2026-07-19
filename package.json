@@ -1,6 +1,6 @@
 {
   "name": "@buildaureon/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official TypeScript SDK for AUREON Financial Compass on Robinhood Chain",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,6 +29,7 @@
     "bench": "tsx benchmarks/client-throughput.ts",
     "example:quickstart": "tsx examples/quickstart/main.ts",
     "example:market": "tsx examples/market-event/main.ts",
+    "example:sdk-demo-terminal": "tsx examples/sdk-demo-terminal/main.ts",
     "example:e2e": "tsx examples/e2e-vault-flow/main.ts",
     "example:e2e-policy": "tsx examples/e2e-policy-rebalance/main.ts",
     "cli": "tsx cli/aureon-cli.ts",
