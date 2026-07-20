@@ -1,28 +1,28 @@
 /**
- * @fileoverview Controlled market event example (simulation helper).
+ * @fileoverview Controlled market-event rehearsal against the live AUREON API.
  *
- * Env: AUREON_API_KEY, AUREON_TOKEN, optional AUREON_API_URL
+ * Env:
+ *   AUREON_API_KEY  issued developer key (required)
+ *   AUREON_API_URL  optional (default https://api.aureonlabs.network)
  *
  *   pnpm --filter @buildaureon/sdk example:market
  */
 
 import {
   createAureonClient,
-  createSessionTokenProvider,
   DEFAULT_API_BASE_URL,
   isAureonError,
 } from "../../src/index.js";
 
 async function main(): Promise<void> {
-  const session = createSessionTokenProvider(process.env.AUREON_TOKEN ?? null);
-  if (!session.getAccessToken()) {
-    throw new Error("Set AUREON_TOKEN from a wallet verify session.");
+  const apiKey = process.env.AUREON_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("Set AUREON_API_KEY to an issued developer key.");
   }
 
   const aureon = createAureonClient({
-    baseUrl: process.env.AUREON_API_URL ?? DEFAULT_API_BASE_URL,
-    apiKey: process.env.AUREON_API_KEY ?? null,
-    getAccessToken: session.getAccessToken,
+    baseUrl: process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL,
+    apiKey,
   });
 
   const objective = await aureon.createObjective({
