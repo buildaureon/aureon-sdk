@@ -1,12 +1,16 @@
 /**
- * Live e2e: deposit flex + Auto maintain 20% TSLA (surplus sell / deficit buy).
+ * Live e2e: vault deposits + Automatic maintain 20% TSLA against the hosted API.
  *
- *   pnpm --filter @buildaureon/sdk exec tsx examples/e2e-policy-rebalance/main.ts
+ * Env:
+ *   AUREON_API_KEY            issued developer key (required)
+ *   AUREON_WALLET_PRIVATE_KEY 0x… signing key (required)
+ *   AUREON_API_URL            optional (default https://api.aureonlabs.network)
+ *   AUREON_RPC_URL            optional
+ *   AUREON_CHAIN_ID           optional (default 46630)
+ *
+ *   pnpm --filter @buildaureon/sdk example:e2e-policy
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   createPublicClient,
   createWalletClient,
@@ -21,12 +25,9 @@ import { privateKeyToAccount } from "viem/accounts";
 import {
   createAureonClient,
   createSessionTokenProvider,
+  DEFAULT_API_BASE_URL,
   isAureonError,
-  LOCAL_API_BASE_URL,
 } from "../../src/index.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const BACKEND = join(__dirname, "../../../backend");
 
 const VAULT_ABI = [
   {
@@ -41,32 +42,18 @@ const VAULT_ABI = [
   },
 ] as const;
 
-function loadDotEnv(path: string): Record<string, string> {
-  if (!existsSync(path)) return {};
-  const out: Record<string, string> = {};
-  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const i = trimmed.indexOf("=");
-    if (i < 0) continue;
-    out[trimmed.slice(0, i)] = trimmed.slice(i + 1).trim();
-  }
-  return out;
-}
-
-function firstApiKey(raw?: string): string {
-  const key = raw?.split(",")[0]?.trim();
-  if (!key) throw new Error("AUREON_API_KEYS missing");
-  return key;
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Set ${name}`);
+  return value;
 }
 
 function loadKey(): Hex {
-  if (process.env.AUREON_E2E_KEY?.startsWith("0x")) {
-    return process.env.AUREON_E2E_KEY as Hex;
+  const key = requireEnv("AUREON_WALLET_PRIVATE_KEY");
+  if (!/^0x[0-9a-fA-F]{64}$/.test(key)) {
+    throw new Error("AUREON_WALLET_PRIVATE_KEY must be a 0x-prefixed 32-byte hex key");
   }
-  const walletPath = join(BACKEND, ".secrets/robinhood-testnet-wallet.json");
-  const j = JSON.parse(readFileSync(walletPath, "utf8")) as { privateKey: string };
-  return j.privateKey as Hex;
+  return key as Hex;
 }
 
 function log(step: string, data?: unknown) {
@@ -74,11 +61,12 @@ function log(step: string, data?: unknown) {
 }
 
 async function main() {
-  const env = loadDotEnv(join(BACKEND, ".env"));
-  const baseUrl = process.env.AUREON_API_URL ?? LOCAL_API_BASE_URL;
-  const rpcUrl = env.AUREON_RPC_URL ?? "https://rpc.testnet.chain.robinhood.com";
-  const chainId = Number(env.AUREON_CHAIN_ID ?? 46630);
-  const apiKey = firstApiKey(process.env.AUREON_API_KEY ?? env.AUREON_API_KEYS);
+  const baseUrl = process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL;
+  const rpcUrl =
+    process.env.AUREON_RPC_URL?.trim() ||
+    "https://rpc.testnet.chain.robinhood.com";
+  const chainId = Number(process.env.AUREON_CHAIN_ID ?? 46630);
+  const apiKey = requireEnv("AUREON_API_KEY");
 
   const account = privateKeyToAccount(loadKey());
   const publicClient = createPublicClient({ transport: http(rpcUrl) });
