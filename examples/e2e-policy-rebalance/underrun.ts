@@ -1,9 +1,14 @@
 /**
  * Follow-up: force TSLA underweight → Auto should Sell WETH → Buy TSLA.
+ *
+ * Env:
+ *   AUREON_API_KEY            issued developer key
+ *   AUREON_WALLET_PRIVATE_KEY 0x… signing key
+ *   AUREON_API_URL            optional (default https://api.aureonlabs.network)
+ *   AUREON_RPC_URL            optional
+ *   AUREON_CHAIN_ID           optional (default 46630)
  */
-import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+
 import {
   createPublicClient,
   createWalletClient,
@@ -15,39 +20,39 @@ import { privateKeyToAccount } from "viem/accounts";
 import {
   createAureonClient,
   createSessionTokenProvider,
+  DEFAULT_API_BASE_URL,
   isAureonError,
-  LOCAL_API_BASE_URL,
 } from "../../src/index.js";
 
-const BACKEND = join(dirname(fileURLToPath(import.meta.url)), "../../../backend");
-const env = Object.fromEntries(
-  readFileSync(join(BACKEND, ".env"), "utf8")
-    .split(/\r?\n/)
-    .filter((l) => l && !l.startsWith("#") && l.includes("="))
-    .map((l) => {
-      const i = l.indexOf("=");
-      return [l.slice(0, i), l.slice(i + 1).trim()] as const;
-    })
-);
-const key = JSON.parse(
-  readFileSync(join(BACKEND, ".secrets/robinhood-testnet-wallet.json"), "utf8")
-).privateKey as Hex;
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Set ${name}`);
+  return value;
+}
+
+const key = requireEnv("AUREON_WALLET_PRIVATE_KEY") as Hex;
+if (!/^0x[0-9a-fA-F]{64}$/.test(key)) {
+  throw new Error("AUREON_WALLET_PRIVATE_KEY must be a 0x-prefixed 32-byte hex key");
+}
+
 const account = privateKeyToAccount(key);
-const rpc = env.AUREON_RPC_URL!;
-const chainId = Number(env.AUREON_CHAIN_ID || 46630);
+const rpc =
+  process.env.AUREON_RPC_URL?.trim() ||
+  "https://rpc.testnet.chain.robinhood.com";
+const chainId = Number(process.env.AUREON_CHAIN_ID || 46630);
 const publicClient = createPublicClient({ transport: http(rpc) });
 const walletClient = createWalletClient({ account, transport: http(rpc) });
 const chain = {
   id: chainId,
-  name: "rh",
+  name: "Robinhood Chain Testnet",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [rpc] } },
 } as const;
 
 const session = createSessionTokenProvider(null);
 const aureon = createAureonClient({
-  baseUrl: LOCAL_API_BASE_URL,
-  apiKey: env.AUREON_API_KEYS!.split(",")[0]!.trim(),
+  baseUrl: process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL,
+  apiKey: requireEnv("AUREON_API_KEY"),
   getAccessToken: session.getAccessToken,
 });
 
@@ -100,8 +105,7 @@ for (const step of d.steps) {
 }
 
 const objs = await aureon.listObjectives();
-const obj =
-  objs.find((o) => o.name.includes("E2E 20% TSLA")) ?? objs[0];
+const obj = objs.find((o) => o.name.includes("E2E 20% TSLA")) ?? objs[0];
 if (!obj) throw new Error("no objective");
 console.log("using objective", obj.id, obj.name);
 
