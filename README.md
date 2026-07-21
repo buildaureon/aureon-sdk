@@ -11,7 +11,7 @@ Financial Compass, capital health, and verified restore plans: one typed integra
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.0-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.1-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -27,116 +27,221 @@ pnpm add @buildaureon/sdk
 
 ---
 
-## Table of Contents
+## Table of contents
 
-1. [What is AUREON?](#what-is-aureon)
-2. [Requirements & Installation](#requirements--installation)
-3. [Architecture & System Flow](#architecture--system-flow)
-    - [3.1 Client-API Trust Boundary](#31-client-api-trust-boundary)
-    - [3.2 Session Authentication Flow](#32-session-authentication-flow)
-    - [3.3 Rebalancing & Watchdog Execution Flow](#33-rebalancing--watchdog-execution-flow)
-4. [Quickstart](#quickstart-1)
-5. [Detailed Authentication Guide](#detailed-authentication-guide)
-    - [5.1 API Keys](#51-api-keys)
-    - [5.2 Wallet Bearer Handshake](#52-wallet-bearer-handshake)
-    - [5.3 Token Provider Lifecycle](#53-token-provider-lifecycle)
-6. [API Surface Reference & Code Walkthroughs](#api-surface-reference--code-walkthroughs)
-    - [6.1 Connection Smoke Tests](#61-connection-smoke-tests)
-    - [6.2 Managing the Capital Book](#62-managing-the-capital-book)
-    - [6.3 Defining and Querying Objectives](#63-defining-and-querying-objectives)
-    - [6.4 Evaluating Compliance, Health, and Timeline Logs](#64-evaluating-compliance-health-and-timeline-logs)
-    - [6.5 Non-Custodial Vault Operations](#65-non-custodial-vault-operations)
-    - [6.6 Executing Restore Plans & Rebalances](#66-executing-restore-plans--rebalances)
-    - [6.7 Simulating Market Events](#67-simulating-market-events)
-    - [6.8 Developer API Key Management](#68-developer-api-key-management)
-7. [Client Configuration & Transport Engine](#client-configuration--transport-engine)
-    - [7.1 Configuration Reference Table](#71-configuration-reference-table)
-    - [7.2 Retries and Network Failover](#72-retries-and-network-failover)
-8. [Error Model and Code Handling](#error-model-and-code-handling)
-    - [8.1 Error Code Reference Matrix](#81-error-code-reference-matrix)
-    - [8.2 Narrowing Errors in Practice](#82-narrowing-errors-in-practice)
-9. [CLI Command-Line Guide](#cli-command-line-guide)
-10. [Design Principles & Settlement Honesty](#design-principles--settlement-honesty)
-11. [Documentation Registry Map](#documentation-registry-map)
+1. [Overview](#overview)
+2. [What is AUREON?](#what-is-aureon)
+3. [What this SDK is](#what-this-sdk-is)
+4. [Ecosystem](#ecosystem)
+5. [Full system architecture](#full-system-architecture)
+6. [End-to-end flows](#end-to-end-flows)
+7. [Requirements & installation](#requirements--installation)
+8. [Quick start](#quick-start)
+9. [Authentication](#detailed-authentication-guide)
+10. [API surface reference](#api-surface-reference--code-walkthroughs)
+11. [Client configuration](#client-configuration--transport-engine)
+12. [Error model](#error-model-and-code-handling)
+13. [CLI](#cli-command-line-guide)
+14. [Design principles](#design-principles--settlement-honesty)
+15. [Documentation registry](#documentation-registry)
+16. [Community](#community--resources)
+
+---
+
+## Overview
+
+**AUREON** is the financial intelligence layer for onchain AI agents on **Robinhood Chain**. Agents and operators do not live on one-off swaps. They need continuous policy: keep a stable sleeve near a target weight, hold exposure bands on equity tokens, and restore capital when markets move. AUREON turns those rules into first-class **Financial Compass Objectives** — registered policies the system monitors, scores for health, and restores with explicit settlement receipts.
+
+Traditional web3 tooling is transactional. An operator submits a deposit or a swap, the chain settles once, and the broader intent disappears. Markets then move. Allocations drift. The agent either wakes up late or fires uncontrolled rebalances with no shared memory of why capital was supposed to look a certain way. AUREON closes that gap with a hosted policy and health engine, a non-custodial vault path on Robinhood Chain, and a typed TypeScript client so integrators never hand-roll the trust boundary between monitoring and signing.
+
+**`@buildaureon/sdk`** is the official TypeScript HTTP client in this repository. It is how agent runtimes, operator scripts, and product surfaces talk to the AUREON API: wallet session handshake, Capital Book sync, objective CRUD, health and timeline queries, vault deposit and withdraw step preparation, restore plan execution, and controlled market-event rehearsal for integration tests. Private keys stay with the host application. The API never holds custody. Receipts are honest about whether settlement was **vault** (on-chain) or **staged** (ledger-local, labeled for UI transparency).
+
+The broader product stack includes the hosted AUREON API and Health Watchdog, the operator utility at [app.aureonlabs.network](https://app.aureonlabs.network), Smart Vault contracts on Robinhood Chain, and the public site at [aureonlabs.network](https://www.aureonlabs.network/). This README is the integrator front door — dense enough to understand the system, practical enough to ship a first session, and linked into the long-form docs under `docs/`.
 
 ---
 
 ## What is AUREON?
 
-**AUREON** is a policy and execution layer for capital on **Robinhood Chain**. Traditional web3 interactions are transactional: an operator submits a single swap or deposit instruction, and once settled, the system forgets the broader goal. 
+AUREON treats capital as a living policy surface rather than a sequence of forgotten transactions. Developers register continuous financial rules — for example, “maintain a stablecoin buffer at 25% of total portfolio value with a three-point tolerance.” The system then:
 
-AUREON introduces **Financial Compass Objectives (FCOs)** as execution primitives. Instead of sending raw transactions, developers register continuous financial rules (e.g., "maintain a stable coin buffer at 25% of total portfolio value"). The AUREON system:
+- Monitors holdings across active addresses and smart vault contracts.
+- Marks portfolio value with public market data.
+- Detects allocation breaches against registered objective bands.
+- Produces recovery instructions (wrap or unwrap paths, keeper-driven vault swaps).
+- Appends an auditable timeline of compliance events and restore receipts.
 
-* Monitors capital holdings across active addresses and smart vault contracts.
-* Computes live portfolio value using public market data.
-* Detects allocation breaches against registered objective bands.
-* Produces recovery instructions (e.g., wrap/unwrap transactions or keeper-driven vault swaps).
-* Maintains a cryptographic, append-only timeline of compliance audits.
+### The concept: persistent objectives, honest settlement
+
+Unlike a one-shot rebalancer bot that fires and forgets, AUREON keeps the objective as the primitive. Health state, timeline events, and restore plans all hang off that policy object. When drift exceeds tolerance, the watchdog records a violation, a restore plan is available, and execution returns a receipt whose `settlement` field tells the truth about where capital actually moved.
 
 ```mermaid
-flowchart TD
-  subgraph Public [Public Node / Operator App]
-    SDK["@buildaureon/sdk (TypeScript)"]
-    Signer[Wallet Signer / Viem]
+flowchart LR
+  subgraph intent["Intent"]
+    FCO[Financial Compass Objective]
   end
-  subgraph Cloud [Hosted Ingress]
-    API[AUREON API Gateway]
-    Watchdog[Health Watchdog Engine]
-    DB[(SQLite Ledger)]
+  subgraph engine["Policy engine"]
+    Health[Health + Watchdog]
+    Plan[Restore planner]
   end
-  subgraph EVM [Robinhood Chain L2]
-    Vault[AUREON Smart Vault]
-    Keeper[Keeper Rebalance Adapter]
+  subgraph settle["Settlement"]
+    Staged[staged receipt]
+    Vault[vault / on-chain]
   end
+  FCO --> Health --> Plan
+  Plan --> Staged
+  Plan --> Vault
+```
 
-  SDK -->|"HTTPS request with Key + JWT"| API
+### What AUREON is not
+
+- Not a custodian. Private keys never leave the client.
+- Not a silent black-box trader. Restores are plan-driven and receipted.
+- Not a claim that every restore is on-chain. `settlement: "staged"` means ledger-local and must be labeled as such in product UI.
+
+---
+
+## What this SDK is
+
+**`@buildaureon/sdk`** is the npm-facing TypeScript package for application developers and agent authors.
+
+| You can | Through |
+| --- | --- |
+| Authenticate with an issued API key (wallet identity) | `apiKey` on `createAureonClient` |
+| Authenticate a wallet session (optional nonce → sign) | `getAuthNonce`, `verifyWallet`, `createSessionTokenProvider` |
+| Sync and manage the Capital Book | `syncPortfolio`, `setPortfolio`, `clearPortfolio` |
+| Create and query Financial Compass objectives | `createObjective`, `listObjectives`, `getObjective` |
+| Read health, timeline, and overview | `getHealth`, `getTimeline`, `getOverview`, `refreshWatchdog` |
+| Prepare non-custodial vault deposit / withdraw steps | `prepareVaultDeposit`, related vault helpers |
+| Fetch and execute restore plans | `getRestorePlan`, `restoreObjective` |
+| Apply controlled market events for integration rehearsal | `applyMarketEvent` |
+| Manage developer API keys | `createApiKey`, `listApiKeys`, `toggleApiKey`, `revokeApiKey` |
+
+**This package alone does not:**
+
+- Hold or rotate private keys.
+- Broadcast transactions (your viem / wallet client does).
+- Deploy Smart Vault contracts.
+- Replace the hosted Health Watchdog — it calls it.
+
+---
+
+## Ecosystem
+
+```mermaid
+flowchart TB
+  subgraph clients["Integrators"]
+    Agent[AI agent / operator script]
+    Utility[Operator utility]
+  end
+  subgraph npm_pkg["npm: @buildaureon/sdk"]
+    SDK[TypeScript client + CLI]
+  end
+  subgraph hosted["AUREON hosted layer"]
+    API[API gateway]
+    Watchdog[Health Watchdog]
+    Ledger[(Ledger store)]
+  end
+  subgraph chain["Robinhood Chain L2"]
+    Vault[Smart Vault]
+    Keeper[Keeper rebalance path]
+  end
+  Agent --> SDK
+  Utility --> SDK
+  SDK -->|HTTPS + API key + JWT| API
   API --> Watchdog
-  API --> DB
-  Watchdog -->|"Identify violation"| Keeper
-  Signer -->|"1. Request Calldata Steps"| API
-  API --x|"2. Returns steps (no keys held)"| Signer
-  Signer -->|"3. Signs & broadcasts transactions"| EVM
+  API --> Ledger
+  Watchdog --> Keeper
+  Agent -->|sign + broadcast steps| Vault
+  Keeper --> Vault
 ```
+
+| Component | Surface | Role |
+| --- | --- | --- |
+| **@buildaureon/sdk** (this repo) | TypeScript / CLI | Typed client, session helpers, vault step prep |
+| **AUREON API** | Hosted HTTPS | Objectives, health, timeline, restore coordination |
+| **Operator utility** | [app.aureonlabs.network](https://app.aureonlabs.network) | Human console for keys, capital, and policy |
+| **Smart Vaults** | Robinhood Chain | Non-custodial on-chain capital path |
+| **Website** | [aureonlabs.network](https://www.aureonlabs.network/) | Product narrative and entry points |
 
 ---
 
-## Requirements & Installation
+## Full system architecture
 
-### Requirements
-* **Node.js** version 20 or higher (ESM environment).
-* **Viem** (version 2.x) if signing and broadcasting transaction steps is required.
+Complete AUREON topology: SDK client, hosted policy engines, ledger, vault settlement, and local signing.
 
-### Installation
-Add the package to your project using a package manager:
+```mermaid
+flowchart TB
+  subgraph CLIENT["CLIENT LAYER — Operator / Agent"]
+    direction TB
+    APP["Host application"]
+    SDK["@buildaureon/sdk"]
+    SESSION["Session token provider"]
+    SIGNER["Wallet signer · Viem"]
+    APP --> SDK
+    APP --> SESSION
+    APP --> SIGNER
+  end
 
-```bash
-# Using pnpm
-pnpm add @buildaureon/sdk
+  subgraph CLOUD["HOSTED INGRESS — AUREON API"]
+    direction TB
+    API["API gateway"]
+    DB[("Ledger store")]
+    ORACLE["Public price marks"]
+    HEALTH["Health evaluation"]
+    WATCH["Watchdog heartbeat"]
+    PLANNER["Restore planner"]
+    API --> DB
+    API --> HEALTH
+    API --> WATCH
+    ORACLE --> HEALTH
+    WATCH --> PLANNER
+  end
 
-# Using npm
-npm install @buildaureon/sdk
+  subgraph EVM["ROBINHOOD CHAIN L2"]
+    direction TB
+    VAULT["AUREON Smart Vault"]
+    KEEPER["Keeper rebalance adapter"]
+    KEEPER --> VAULT
+  end
 
-# Using yarn
-yarn add @buildaureon/sdk
+  SDK -->|"1 HTTPS · API key · JWT"| API
+  API -->|"2 health / plans / steps"| SDK
+  SIGNER -->|"3 sign + broadcast"| VAULT
+  WATCH -->|"4 violation → plan"| PLANNER
+  PLANNER -->|"5 vault_swap path"| KEEPER
+
+  style CLIENT fill:#f9faf3,stroke:#0b0e0d,color:#0b0e0d
+  style CLOUD fill:#f9faf3,stroke:#a8e00d,color:#0b0e0d
+  style EVM fill:#f9faf3,stroke:#0b0e0d,color:#0b0e0d
 ```
+
+### Architecture at a glance
+
+| Layer | Components | Trust boundary |
+| --- | --- | --- |
+| **Client** | Host app, `@buildaureon/sdk`, session provider, local signer | Keys and broadcast stay here |
+| **Hosted** | API, ledger, oracles, health, watchdog, planner | Policy, pricing, coordination — no private keys |
+| **Chain** | Smart Vault, keeper path | Settlement when `settlement: "vault"` |
+
+Deep dive: [docs/architecture.md](docs/architecture.md) · [docs/security.md](docs/security.md) · [docs/integration-guide.md](docs/integration-guide.md)
 
 ---
 
-## Architecture & System Flow
+## End-to-end flows
 
-### 3.1 Client-API Trust Boundary
-To protect user funds, AUREON uses a decoupled trust boundary. The hosted API handles monitoring, calculations, public oracle pricing, and rebalance coordination, while private keys remain with the client.
+### Client–API trust boundary
+
+To protect user funds, AUREON splits responsibility. The hosted API monitors capital, marks prices, evaluates objectives, and coordinates restore plans. The host application alone stores keys and signs transactions. The SDK sits on that boundary: it validates inputs, transports requests, prepares unsigned vault calldata, and never asks for a private key.
 
 | Layer | Responsibility |
-|---|---|
-| **SDK** | Request transport, EIP-712 hashing utilities, parameter validation, retry backing, and vault deposit/withdrawal calldata construction. |
-| **AUREON API** | Ledger syncing, objective validation logic, public price marks tracking, execution timeline compilation, and stage rebalance management. |
-| **Host Application** | Private key storage, MetaMask/signer integrations, and transaction signing & broadcasting. |
+| --- | --- |
+| **SDK** | Transport, validation, retries, EIP-712 helpers, vault step construction |
+| **AUREON API** | Ledger sync, objective logic, price marks, timeline, staged or vault restore coordination |
+| **Host application** | Key storage, wallet UX, signing, broadcasting |
 
----
+### Session authentication flow
 
-### 3.2 Session Authentication Flow
-Authentication requires a challenge-response signature verification to link a wallet address with a temporary JWT session.
+Authentication is a challenge–response handshake that binds a wallet address to a temporary JWT.
 
 ```mermaid
 sequenceDiagram
@@ -157,185 +262,208 @@ sequenceDiagram
   SDK-->>App: Return JWT Token
 ```
 
----
+### Watchdog and restore flow
 
-### 3.3 Rebalancing & Watchdog Execution Flow
-When portfolio weights drift, the system triggers a rebalance using the execution flow:
+When portfolio weights drift past tolerance, health flips to violation and a restore plan becomes available.
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant Client as Client Application
   participant API as AUREON API Gateway
-  participant DB as SQLite DB
+  participant DB as Ledger Store
   participant Engine as Health Engine
   participant Keeper as Keeper Service
 
   Client->>API: aureon.refreshWatchdog()
-  API->>DB: Pull current price marks & positions
+  API->>DB: Pull price marks and positions
   API->>Engine: Recompute objective deviations
-  alt Drift Exceeds Tolerance Limit
-    Engine->>DB: Write health state: "violation"
-    Engine->>DB: Write event: "violation_detected"
+  alt Drift exceeds tolerance
+    Engine->>DB: Write health state: violation
+    Engine->>DB: Write event: violation_detected
     Engine->>Keeper: Request restoration plan
     Keeper-->>API: Return plan (e.g. vault_swap)
-  else Within Bands
-    Engine->>DB: Write health state: "healthy"
+  else Within bands
+    Engine->>DB: Write health state: healthy
   end
-  API-->>Client: Returns watchdog status and breach reports
+  API-->>Client: Watchdog status and breach reports
+```
+
+Typical operator loop in prose:
+
+1. **Define capital** — sync the Capital Book from chain or seed an explicit book for rehearsal.
+2. **Register policy** — create a Financial Compass objective with target weight and tolerance.
+3. **Observe** — poll health and timeline; refresh the watchdog after market moves.
+4. **Restore** — fetch the plan, execute restore, read `settlement` on the receipt.
+5. **Verify** — confirm health returns to healthy and the timeline shows the restore event.
+
+---
+
+## Requirements & installation
+
+### Requirements
+
+- **Node.js** 20 or higher (ESM).
+- **Viem** 2.x when you sign and broadcast vault steps.
+
+### Installation
+
+```bash
+pnpm add @buildaureon/sdk
+# or
+npm install @buildaureon/sdk
+# or
+yarn add @buildaureon/sdk
 ```
 
 ---
 
-## Quickstart
+## Quick start
 
-Initialize the SDK, retrieve a signing nonce, verify the signature, and sync wallet positions:
+Initialize the client with an **issued** developer API key (Developers page in the utility).
+That key identifies your wallet for control-plane calls — sync, objectives, health, restore plans.
+A private key is only needed later to **broadcast** on-chain deposit/withdraw txs.
+
+**SDK supports Automatic objectives only** (`automationMode: "auto"`, the default). Manual Approve workflows stay in the operator utility.
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
-import { privateKeyToAccount } from "viem/accounts";
-import { createWalletClient, http } from "viem";
+import { createAureonClient } from "@buildaureon/sdk";
 
 async function run() {
-  // 1. Setup session token container
-  const session = createSessionTokenProvider(null);
-  
-  // 2. Initialize the client
   const aureon = createAureonClient({
     baseUrl: "https://api.aureonlabs.network",
-    apiKey: process.env.AUREON_API_KEY!,
-    getAccessToken: session.getAccessToken,
+    apiKey: process.env.AUREON_API_KEY!, // issued key from Developers console
   });
 
-  // 3. Perform a handshake to authenticate
-  const account = privateKeyToAccount("0x..."); // Operator private key
-  const { message } = await aureon.getAuthNonce(account.address);
-  
-  const walletClient = createWalletClient({ account, transport: http() });
-  const signature = await walletClient.signMessage({ message, account });
-  
-  const login = await aureon.verifyWallet({
-    address: account.address,
-    message,
-    signature,
-  });
-  
-  // 4. Save credentials
-  session.setToken(login.token);
+  const me = await aureon.me();
+  console.log("wallet", me.walletAddress);
 
-  // 5. Query portfolio status
   const synced = await aureon.syncPortfolio();
   console.log("Portfolio Value USD:", synced.portfolio.totalNotionalUsd);
 }
 ```
 
+Optional wallet Bearer (nonce → sign → `verifyWallet`) still works and **wins** when both
+are sent. Env bootstrap keys (`AUREON_API_KEYS` on the server) unlock product access only —
+they do not identify a wallet; use an issued key or a Bearer session with those.
+
+From here, create an objective, read health, and restore when the watchdog reports a violation.
+Full walkthroughs live in [docs/integration-guide.md](docs/integration-guide.md).
+
 ---
 
-## Detailed Authentication Guide
+## Detailed authentication guide
 
-### 5.1 API Keys
-API keys regulate product access at the gateway level. They must be sent with all client requests via the `X-Aureon-Api-Key` header. Generate new API keys inside the operator utility developer console.
+### Issued API keys (recommended for SDK / agents)
 
-### 5.2 Wallet Bearer Handshake
-Bearer sessions scope data operations to a specific wallet. The SDK client obtains a nonce, signs it using an EVM signer, and posts the signature back to `/auth/verify` to receive a JWT session token.
+Create a key in the operator utility **Developers** console. The plaintext secret is shown once.
+Send it as `X-Aureon-Api-Key`. The gateway resolves the bound wallet and scopes ledger operations
+to that address. Treat issued keys like passwords: pause, revoke, rotate; never commit them.
 
-### 5.3 Token Provider Lifecycle
-The `createSessionTokenProvider` manager handles token resolution and injection. It can be passed directly as a resolver function:
+### Private key / on-chain signing
+
+`prepareVaultDeposit` / `prepareVaultWithdraw` return **unsigned** calldata. Broadcasting those
+transactions (and any other signed chain steps) requires the wallet private key or a browser
+wallet — not the API key.
+
+### Wallet bearer handshake (optional)
+
+Bearer sessions also scope ledger operations to a wallet. The SDK fetches a nonce message, the
+host signs it with an EVM signer, and `/auth/verify` returns a session token for `getAccessToken`.
+Use this for the browser utility, or when you only have an env bootstrap key (no issued key).
+
+### Token provider lifecycle
 
 ```ts
 import { createSessionTokenProvider } from "@buildaureon/sdk";
 
 const session = createSessionTokenProvider(process.env.AUREON_TOKEN ?? null);
 
-// Clear tokens on logout
 await aureon.logout();
 session.clear();
 ```
 
+`createSessionTokenProvider` is a small stateful container: set after verify, clear on logout,
+inject via `getAccessToken` so the client stays free of global mutable auth state.
+
 ---
 
-## API Surface Reference & Code Walkthroughs
+## API surface reference & code walkthroughs
 
-### 6.1 Connection Smoke Tests
+### Connection smoke tests
+
 ```ts
 const ping = await aureon.ping();
 console.log(`Connected. Backend version: ${ping.version}`);
 ```
 
-### 6.2 Managing the Capital Book
-The Capital Book defines the assets tracked by AUREON. Sync positions from the chain or modify them directly:
+### Managing the Capital Book
+
+The Capital Book is the set of positions AUREON tracks for weight and health math. Sync from Robinhood Chain and vaults, or set an explicit book for controlled rehearsal environments.
 
 ```ts
-// Sync active balances from Robinhood Chain L2 and smart vaults
 const syncResult = await aureon.syncPortfolio();
 console.log("Current stable coin weight:", syncResult.portfolio.stableWeight);
 
-// Manually define positions (useful for simulation environments)
 const updatedBook = await aureon.setPortfolio([
   { symbol: "WETH", quantity: 2.5, category: "gas" },
-  { symbol: "USDG", quantity: 2500, category: "stable" }
+  { symbol: "USDG", quantity: 2500, category: "stable" },
 ]);
 
-// Clear all active ledger tracking rows
 await aureon.clearPortfolio();
 ```
 
-### 6.3 Defining and Querying Objectives
-Objectives dictate the target weights and tolerance buffers. All SDK objectives are initialized with automatic rebalancing:
+### Defining and querying objectives
+
+Objectives are the Financial Compass primitives: target weights, tolerance bands, and priority. SDK-created objectives participate in automatic restore coordination when health enters violation.
 
 ```ts
-// Create a stable coin allocation objective
 const stableObj = await aureon.createObjective({
   name: "Stable Core Reserve",
   kind: "stable_allocation",
-  targetWeight: 0.30,  // Keep 30% of portfolio value in stables
-  tolerance: 0.03,     // Rebalance if drift exceeds +/- 3%
-  priority: "high"
+  targetWeight: 0.3,
+  tolerance: 0.03,
+  priority: "high",
 });
 
-// Create a stock token tracking objective
 const stockObj = await aureon.createObjective({
   name: "Tesla Sleeve Allocation",
   kind: "balanced_portfolio",
   targetSymbol: "TSLA",
-  targetWeight: 0.20,
-  tolerance: 0.05
+  targetWeight: 0.2,
+  tolerance: 0.05,
 });
 
-// List objectives registered to the authenticated wallet
 const objectives = await aureon.listObjectives();
 ```
 
-### 6.4 Evaluating Compliance, Health, and Timeline Logs
+### Health, timeline, and overview
+
 ```ts
-// Get active health states for all objectives
 const healthRecords = await aureon.getHealth();
 for (const health of healthRecords) {
   console.log(`Objective ${health.objectiveId}: State: ${health.state}`);
 }
 
-// Fetch timeline events (logs objective updates, breaches, and rebalances)
 const timeline = await aureon.getTimeline();
-timeline.forEach(event => console.log(`[${event.type}]: ${event.message}`));
+timeline.forEach((event) => console.log(`[${event.type}]: ${event.message}`));
 
-// Fetch general dashboard overview metrics
 const overview = await aureon.getOverview();
 console.log("Global health score:", overview.globalHealthScore);
 ```
 
-### 6.5 Non-Custodial Vault Operations
-Vault interactions construct raw transactions (calldatas) locally. The host application signs and broadcasts these to execute actions:
+### Non-custodial vault operations
+
+Vault helpers prepare unsigned steps. The host signs and broadcasts; AUREON never receives the private key.
 
 ```ts
-import { Hex } from "viem";
+import type { Hex } from "viem";
 
-// 1. Prepare vault deposit parameters
 const depositData = await aureon.prepareVaultDeposit({
   symbol: "ETH",
   amount: "0.5",
 });
 
-// 2. Iterate and sign calldata steps
 for (const step of depositData.steps) {
   const hash = await walletClient.sendTransaction({
     account,
@@ -347,107 +475,92 @@ for (const step of depositData.steps) {
 }
 ```
 
-### 6.6 Executing Restore Plans & Rebalances
-If a deviation triggers a breach, fetch the restore instructions:
+### Restore plans and rebalances
+
+When health is in violation, fetch the plan and execute. Always read `settlement` on the receipt.
 
 ```ts
-// 1. Fetch recovery plan details
 const plan = await aureon.getRestorePlan(objective.id);
 console.log(`Plan requires action: ${plan.kind} for ${plan.amountHuman} tokens.`);
 
-// 2. Perform restoration
 if (plan.kind === "vault_swap") {
-  // Vault swaps are handled directly on the backend
   const receipt = await aureon.restoreObjective(objective.id);
   console.log("Rebalance transaction hash:", receipt.transactionHash);
-  console.log("Settlement environment:", receipt.settlement); // "vault" or "staged"
+  console.log("Settlement environment:", receipt.settlement); // "vault" | "staged"
 } else {
-  // ETH wraps or WETH unwraps are executed client-side
-  console.warn("Execute wrap_eth or unwrap_weth using your wallet provider.");
+  console.warn("Execute wrap_eth or unwrap_weth with your wallet provider.");
 }
 ```
 
-### 6.7 Simulating Market Events
-Trigger price changes to test rebalancing routines:
+### Controlled market events
+
+Apply a deterministic price mark change to rehearse breach and restore paths in integration environments. This is a controlled market event against the ledger marks — not a claim of live exchange execution.
 
 ```ts
-// Trigger a mock 15% drop in NVDA's price mark
 const shockResult = await aureon.applyMarketEvent({
   symbol: "NVDA",
   priceChangeRatio: -0.15,
-  autoRestore: true, // Trigger staged/vault restorations automatically if a breach occurs
+  autoRestore: true,
 });
 ```
 
-### 6.8 Developer API Key Management
-Generate, toggle, and revoke keys:
+### Developer API key management
 
 ```ts
-// Generate a new key (Store the returned plain-text 'secret' immediately)
 const newKey = await aureon.createApiKey("Secondary Bot Ingress");
 console.log(`Plaintext secret: ${newKey.secret}`);
 
-// List active keys
 const keys = await aureon.listApiKeys();
-
-// Toggle active/inactive state
 await aureon.toggleApiKey(newKey.id);
-
-// Revoke a key
 await aureon.revokeApiKey(newKey.id);
 ```
 
 ---
 
-## Client Configuration & Transport Engine
+## Client configuration & transport engine
 
-### 7.1 Configuration Reference Table
-Pass these parameters inside the `AureonClientOptions` constructor payload:
+### Configuration reference
 
 | Parameter | Type | Default | Description |
-|---|---|---|---|
-| `baseUrl` | `string` | `"https://api.aureonlabs.network"` | Target API ingress endpoint |
-| `apiKey` | `string` | `undefined` | Key sent with `X-Aureon-Api-Key` headers |
-| `authToken` | `string` | `undefined` | Static JWT bearer token |
-| `getAccessToken` | `() => string \| null` | `undefined` | Dynamic getter function resolving bearer tokens |
-| `timeoutMs` | `number` | `30000` | Abort threshold per network call |
-| `maxRetries` | `number` | `0` | Re-attempt counts for transport failures |
-| `retryDelayMs` | `number` | `250` | Wait delay between retry loops |
-| `headers` | `Record<string, string>` | `{}` | Key-value headers appended to requests |
-| `fetch` | `typeof fetch` | `globalThis.fetch` | Custom fetch wrapper engine overrides |
+| --- | --- | --- | --- |
+| `baseUrl` | `string` | `"https://api.aureonlabs.network"` | API ingress |
+| `apiKey` | `string` | `undefined` | Sent as `X-Aureon-Api-Key` |
+| `authToken` | `string` | `undefined` | Static JWT bearer |
+| `getAccessToken` | `() => string \| null` | `undefined` | Dynamic bearer resolver |
+| `timeoutMs` | `number` | `30000` | Per-call abort threshold |
+| `maxRetries` | `number` | `0` | Transient failure retries |
+| `retryDelayMs` | `number` | `250` | Delay between retries |
+| `headers` | `Record<string, string>` | `{}` | Extra headers |
+| `fetch` | `typeof fetch` | `globalThis.fetch` | Custom fetch override |
+
+### Retries and failover
+
+When `maxRetries` is greater than zero, the client retries timeouts and selected transient HTTP failures with a fixed `retryDelayMs`. Prefer raising retries for long-running agent loops; keep them low for interactive UI paths where fail-fast is better.
 
 ---
 
-### 7.2 Retries and Network Failover
-When `maxRetries` is greater than `0`, the client retries failed requests if it encounters a transient error (such as a timeout or a 503 HTTP status code). Retries use a fixed delay (`retryDelayMs`).
+## Error model and code handling
 
----
+### Error code reference
 
-## Error Model and Code Handling
+| Code | HTTP | Description |
+| --- | --- | --- |
+| `UNAUTHORIZED` | 401 | Missing or invalid API key or bearer |
+| `VALIDATION_ERROR` | 400 | Payload failed validation |
+| `NOT_FOUND` | 404 | Objective, key, or resource missing |
+| `CONFLICT` | 409 | Request conflicts with current ledger state |
+| `RATE_LIMITED` | 429 | Request volume exceeded |
+| `SERVER_ERROR` | 500 / 503 | Hosted execution failure |
+| `TIMEOUT` | — | Exceeded `timeoutMs` |
+| `NETWORK_ERROR` | — | Endpoint unreachable |
 
-### 8.1 Error Code Reference Matrix
-
-| Code | HTTP Status | Description |
-|---|---|---|
-| `UNAUTHORIZED` | 401 | Missing or invalid API key or Bearer token |
-| `VALIDATION_ERROR`| 400 | Payload fails validation (e.g. name length or targetWeight bounds) |
-| `NOT_FOUND` | 404 | Target object (objective, key, etc.) does not exist |
-| `CONFLICT` | 409 | Request conflicts with current database state |
-| `RATE_LIMITED` | 429 | Request count exceeds API limits |
-| `SERVER_ERROR` | 500 / 503 | Server-side execution failure |
-| `TIMEOUT` | N/A | Call exceeded client-configured `timeoutMs` |
-| `NETWORK_ERROR` | N/A | Endpoint unreachable or client is offline |
-
----
-
-### 8.2 Narrowing Errors in Practice
-AUREON methods throw custom error instances. Wrap calls in a try/catch block and use `isAureonError` to handle them:
+### Narrowing errors in practice
 
 ```ts
 import { isAureonError } from "@buildaureon/sdk";
 
 try {
-  const objective = await aureon.getObjective("missing_id");
+  await aureon.getObjective("missing_id");
 } catch (error) {
   if (isAureonError(error)) {
     switch (error.code) {
@@ -455,7 +568,7 @@ try {
         console.error("The specified objective does not exist.");
         break;
       case "UNAUTHORIZED":
-        console.error("Check your API key and wallet session configuration.");
+        console.error("Check API key and wallet session configuration.");
         break;
       default:
         console.error(`Aureon error: ${error.message}`);
@@ -466,65 +579,62 @@ try {
 }
 ```
 
+Full matrix: [docs/error-model.md](docs/error-model.md).
+
 ---
 
-## CLI Command-Line Guide
+## CLI command-line guide
 
-The SDK package includes a developer CLI utility. Provide configuration values using environment variables:
+The package ships a developer CLI. Configure credentials via environment variables:
 
 ```bash
-export AUREON_API_KEY=your_key
-export AUREON_TOKEN=your_bearer_token
+# Issued developer key (recommended) — identifies wallet; 
+export AUREON_API_KEY=aureon_....
 
-# Verify connection
 pnpm --filter @buildaureon/sdk cli ping
-
-# Fetch current account metadata
 pnpm --filter @buildaureon/sdk cli me
-
-# Synchronize current on-chain balances
 pnpm --filter @buildaureon/sdk cli sync
-
-# Print Capital Book portfolio weights
 pnpm --filter @buildaureon/sdk cli portfolio
-
-# List all registered objectives
 pnpm --filter @buildaureon/sdk cli objectives
 ```
 
 ---
 
-## Design Principles & Settlement Honesty
+## Design principles & settlement honesty
 
-1. **Non-Custodial Design**: Private keys never leave the client application. The AUREON API gateway only receives signature verification requests and constructs unsigned transaction payloads.
-2. **Settlement Transparency**: Execution receipts include a `settlement` attribute (`"staged"` or `"vault"`).
-    * `"vault"` indicates the transaction settled on-chain on Robinhood Chain L2.
-    * `"staged"` indicates a local ledger update only. Staged transactions must be labeled transparently in user interfaces.
-3. **Seeded Ledger Capital**: Position data comes from synchronized block queries or explicit operator inputs. The SDK does not fabricate capital balances.
+1. **Non-custodial by construction.** Private keys never leave the client. The API verifies signatures and returns unsigned steps; it does not sign for you.
+2. **Settlement transparency.** Every execution receipt includes `settlement`: `"vault"` means Robinhood Chain settlement; `"staged"` means ledger-local and must be labeled clearly in any user-facing surface.
+3. **Seeded capital, not invented capital.** Positions come from chain sync or explicit operator input. The SDK does not invent balances to make demos look healthy.
+4. **Objectives as primitives.** Health, timeline, and restores hang off Financial Compass objectives so agents can reason about policy, not only about the last transaction hash.
 
 ---
 
-## Documentation Registry Map
+## Documentation registry
 
-For more detail, refer to the documents inside the `sdk/docs/` directory:
+Long-form technical docs live under `docs/`:
 
 | Document | Focus |
-|---|---|
-| [docs/architecture.md](docs/architecture.md) | Client vs API boundary lines and system maps |
-| [docs/auth.md](docs/auth.md) | Wallet handshake, signature verifications, and JWT lifecycles |
-| [docs/client-api.md](docs/client-api.md) | Detailed parameter index for all client methods |
-| [docs/data-contracts.md](docs/data-contracts.md) | Type index matching hosted JSON endpoints |
-| [docs/error-model.md](docs/error-model.md) | Complete error code listing and code mappings |
-| [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integration walkthroughs |
-| [docs/security.md](docs/security.md) | API key and token security guidelines |
-| [docs/transport.md](docs/transport.md) | Transport configurations, retry loops, and error-handling |
+| --- | --- |
+| [docs/architecture.md](docs/architecture.md) | Client vs API boundary, system maps |
+| [docs/auth.md](docs/auth.md) | Wallet handshake and JWT lifecycle |
+| [docs/client-api.md](docs/client-api.md) | Method and parameter index |
+| [docs/data-contracts.md](docs/data-contracts.md) | Types aligned to hosted JSON |
+| [docs/error-model.md](docs/error-model.md) | Full error code mapping |
+| [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
+| [docs/security.md](docs/security.md) | API key and token guidance |
+| [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
 
 ---
 
-## Community & Resources
+## Community & resources
 
-* **Official Website**: [aureonlabs.network](https://aureonlabs.network)
-* **Operator Utility Platform**: [app.aureonlabs.network](https://app.aureonlabs.network)
-* **Twitter / X**: [@buildaureon](https://x.com/buildaureon)
-* **GitHub Repository**: [github.com/buildaureon](https://github.com/buildaureon)
+- **Website:** [aureonlabs.network](https://www.aureonlabs.network/)
+- **Operator utility:** [app.aureonlabs.network](https://app.aureonlabs.network)
+- **X:** [@buildaureon](https://x.com/buildaureon)
+- **GitHub:** [github.com/buildaureon](https://github.com/buildaureon)
 
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
