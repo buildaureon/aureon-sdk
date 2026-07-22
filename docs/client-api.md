@@ -45,8 +45,8 @@ const aureon = createAureonClient({
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
 | `baseUrl` | no | `https://api.aureonlabs.network` | Absolute `http://` or `https://` URL. |
-| `apiKey` | SDK / CLI | N/A | Sent as `X-Aureon-Api-Key`. Utility uses wallet Bearer only. |
-| `getAccessToken` | no | N/A | Sync/async getter before every request. Preferred for Bearer. |
+| `apiKey` | SDK / CLI | N/A | Sent as `X-Aureon-Api-Key`. Issued developer keys also identify the bound wallet (no Bearer required). Env bootstrap keys are product-gate only. Utility uses wallet Bearer only. |
+| `getAccessToken` | no | N/A | Optional Bearer getter. Wins over API-key identity when present. |
 | `authToken` | no | N/A | Static Bearer string when `getAccessToken` is omitted. |
 | `timeoutMs` | no | `30000` | Per-attempt abort timeout. |
 | `maxRetries` | no | `0` | Extra attempts after first failure for retryable errors. |
@@ -202,10 +202,10 @@ async createObjective(input: CreateObjectiveInput): Promise<Objective>
 | Auth | Required |
 | HTTP | `POST /objectives` |
 | Client validation | Name ≥ 3 chars; kind; `targetWeight` ∈ [0,1]; `tolerance` ∈ [0,0.5]; priority if set |
-| Automation | Defaults **`automationMode: "auto"`** (Automatic restore). Omit `automationMode` in SDK/agent integrations. |
+| Automation | SDK supports **Automatic only**. Defaults **`automationMode: "auto"`**. Omit the field in agent integrations. |
 | `targetSymbol` | Required when `kind === "balanced_portfolio"` (uppercased on normalize). |
 
-Manual Approve (`automationMode: "manual"`) is **operator-utility only**, and is not the recommended SDK create path.
+**SDK policy:** Automatic mode only. Manual Approve belongs in the operator utility — do not build Manual agent loops with this package.
 
 ```ts
 const objective = await aureon.createObjective({
@@ -262,6 +262,7 @@ async updateObjective(id: string, input: UpdateObjectiveInput): Promise<Objectiv
 | Auth | Required |
 | HTTP | `PATCH /objectives/:id` |
 | Body | Partial: name, priority, targetWeight, tolerance, maxRiskScore, reinvestRatio |
+| Locked at create | `targetSymbol`, `automationMode` — recreate the objective to change either |
 
 ### `pauseObjective(id)` / `resumeObjective(id)`
 
