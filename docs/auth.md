@@ -1,60 +1,108 @@
-# Cryptographic Authentication Guide
+# Authentication Guide
 
-AUREON combines classic API authentication with Web3 signature verification. This guide provides an in-depth technical explanation of the handshake flow, JWT payloads, and client integrations using standard EVM libraries.
+How `@buildaureon/sdk` authenticates to the hosted AUREON API for agents, scripts, and server integrations.
+
+**Automation note:** The SDK path is designed for **Automatic** objectives only (`automationMode: "auto"`). Manual operator Approve flows belong in the utility UI, not in SDK agent loops.
 
 ---
 
-## 1. Authentication Topology
-
-Requests are validated using a dual-token header model. 
+## 1. Authentication topology
 
 ```mermaid
 graph TD
-  Request[Client Request] --> KeyCheck{Has API Key?}
-  KeyCheck -->|No| Reject1[401 Unauthorized: Missing API Key]
-  KeyCheck -->|Yes| RouteCheck{Is Route Public?}
-  RouteCheck -->|Yes| Allow[Process Request]
-  RouteCheck -->|No| BearerCheck{Has Valid Bearer JWT?}
-  BearerCheck -->|No| Reject2[401 Unauthorized: Missing Session Token]
-  BearerCheck -->|Yes| ScopeCheck{Is Token Bound to Target Wallet?}
-  ScopeCheck -->|No| Reject3[403 Forbidden: Wallet Mismatch]
-  ScopeCheck -->|Yes| Process[Process request]
+  Request[Client_request] --> BearerCheck{Valid_Bearer?}
+  BearerCheck -->|Yes| Process[Act_as_session_wallet]
+  BearerCheck -->|No| KeyCheck{API_key_present?}
+  KeyCheck -->|No| Reject1[401_missing_credentials]
+  KeyCheck -->|Yes| IssuedCheck{Issued_developer_key?}
+  IssuedCheck -->|Yes| ProcessKey[Act_as_key_bound_wallet]
+  IssuedCheck -->|No_env_bootstrap| Reject2[401_need_issued_key_or_Bearer]
 ```
 
-*   **API Key (`X-Aureon-Api-Key`)**: Sent in the headers to identify your product subscription or server deployment. It is generated in the developer dashboard.
-*   **Bearer JWT (`Authorization: Bearer <token>`)**: Establishes session ownership. It is generated dynamically by signing a server-issued challenge message with your private key.
+| Credential | Header | Role |
+| --- | --- | --- |
+| **Issued API key** (Developers console) | `X-Aureon-Api-Key` | Product access **and** wallet identity for control-plane calls |
+| **Env bootstrap key** (`AUREON_API_KEYS` on server) | `X-Aureon-Api-Key` | Product gate only — does **not** identify a wallet |
+| **Wallet Bearer** | `Authorization: Bearer …` | Optional session identity. **Wins** when both Bearer and key are present |
+| **Private key** | (chain only) | Sign/broadcast deposit & withdraw txs — never sent to the API |
+
+Control-plane calls (sync, objectives, health, restore, vault reads, prepare-*) need an **issued** developer key **or** a Bearer session. Moving capital on-chain always needs a local signer.
 
 ---
 
-## 2. EIP-191 Cryptographic Handshake
+## 2. Recommended path: issued API key
 
-The signature validation relies on the EIP-191 standard for signing personal messages. The process prevents replay attacks and ensures session integrity.
+1. Open the operator utility → **Developers**.
+2. Create a key. Copy the plaintext once.
+3. Set env and construct the client:
+
+```ts
+import { createAureonClient } from "@buildaureon/sdk";
+
+const aureon = createAureonClient({
+  baseUrl: "https://api.aureonlabs.network",
+  apiKey: process.env.AUREON_API_KEY!, // issued key from Developers
+});
+
+const me = await aureon.me();
+console.log("wallet", me.walletAddress);
+
+const vault = await aureon.getVaultStatus();
+const objectives = await aureon.listObjectives();
+```
+
+No Bearer token is required for this path. The gateway resolves the wallet bound to the issued key.
+
+### Deposit / withdraw still need a private key
+
+```ts
+const prep = await aureon.prepareVaultDeposit({ symbol: "ETH", amount: "0.1" });
+// prep.steps are UNSIGNED — sign and broadcast with viem / ethers / your wallet host
+```
+
+The API key can request prepare steps. It cannot sign chain transactions.
+
+---
+
+## 3. Optional Bearer handshake
+
+Use when you intentionally want a wallet session, or when you only have an env bootstrap key (no issued key).
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant Client as SDK Client
-  participant Gateway as Aureon Gateway
-  participant Signer as Wallet Signer (EIP-191)
+  participant Client as SDK_client
+  participant API as Aureon_API
+  participant Signer as Wallet_signer
 
-  Client->>Gateway: GET /auth/nonce?address=0x742...
-  Gateway->>Gateway: Generate unique nonce & expiresAt
-  Gateway-->>Client: Challenge (nonce, message, expiresAt)
-  Client->>Signer: Request signature over message
-  Signer->>Signer: Sign message using private key (personal_sign)
-  Signer-->>Client: Cryptographic Signature (65-byte hex string)
-  Client->>Gateway: POST /auth/verify { address, message, signature }
-  Gateway->>Gateway: Recover signer address from signature
-  alt Recovered Address == Input Address and Not Expired
-    Gateway->>Gateway: Generate JWT (Expires in 24 hours)
-    Gateway-->>Client: AuthSessionResponse (token, expiresAt)
-  else Validation Failed
-    Gateway-->>Client: Throw 401 ValidationError
-  end
+  Client->>API: GET /auth/nonce?address=0x...
+  API-->>Client: challenge message
+  Client->>Signer: personal_sign(message)
+  Signer-->>Client: signature
+  Client->>API: POST /auth/verify
+  API-->>Client: session token
 ```
 
-### 2.1 The Challenge Message Schema
-The message returned by `/auth/nonce` follows a strict structure:
+```ts
+import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
+
+const session = createSessionTokenProvider(null);
+const aureon = createAureonClient({
+  baseUrl: "https://api.aureonlabs.network",
+  apiKey: process.env.AUREON_API_KEY,
+  getAccessToken: session.getAccessToken,
+});
+
+const { message } = await aureon.getAuthNonce(address);
+const signature = await wallet.signMessage({ message });
+const login = await aureon.verifyWallet({ address, message, signature });
+session.setToken(login.token);
+
+await aureon.me();
+```
+
+### Challenge message shape
+
 ```text
 AUREON Login Challenge
 Wallet: 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
@@ -64,152 +112,63 @@ Expires: 2026-07-15T22:50:00.000Z
 
 Sign this message to prove ownership of the wallet.
 ```
-*   **Nonce**: A cryptographically secure random string preventing replay attacks.
-*   **Expires**: The timestamp (5-minute TTL) after which the challenge becomes invalid.
+
+### Session provider lifecycle
+
+```ts
+session.setToken(login.token); // after verify
+await aureon.logout();
+session.clear();
+```
+
+`createSessionTokenProvider` keeps the client free of global mutable auth state. Prefer `getAccessToken` over a static `authToken` when sessions can rotate.
 
 ---
 
-## 3. JWT Payload Structure
+## 4. Precedence and edge cases
 
-Upon successful signature recovery, the gateway issues a JSON Web Token containing the session metadata:
-
-```json
-{
-  "sub": "0x742d35cc6634c0532925a3b844bc454e4438f44e",
-  "iss": "aureon-auth-service",
-  "iat": 1784155500,
-  "exp": 1784241900,
-  "sid": "sess_01h8v12x8p8p3z2v1q45r3m2e1",
-  "scope": "operator"
-}
-```
-
-*   **`sub` (Subject)**: The lowercase Ethereum address of the authenticated wallet.
-*   **`exp` (Expiration)**: Unix timestamp set exactly 24 hours after token issuance.
-*   **`scope`**: Defines operational permissions (e.g. `operator`, `read-only`).
+| Situation | Result |
+| --- | --- |
+| Issued key only | Act as key-bound wallet |
+| Bearer only | Act as session wallet |
+| Bearer + any key | Bearer wins (key validated if sent) |
+| Env bootstrap key only | 401 — cannot identify a wallet |
+| Invalid / paused / revoked issued key | 401 |
+| `devLogin()` | Local preview APIs only — not production |
 
 ---
 
-## 4. Multi-Framework Integration Examples
+## 5. Environment variables
 
-### 4.1 Integration via Viem (TypeScript / Node.js)
-Ideal for background cron daemons, keepers, and automated scripts.
+| Variable | Required | Description |
+| --- | --- | --- |
+| `AUREON_API_KEY` | Recommended | Issued developer key |
+| `AUREON_API_URL` | No | Defaults to `https://api.aureonlabs.network` |
+| `AUREON_TOKEN` | No | Optional Bearer for CLI / scripts |
 
-```ts
-import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
-import { createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { mainnet } from "viem/chains";
+CLI example:
 
-async function authenticateAgent() {
-  const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
-  const wallet = createWalletClient({
-    account,
-    chain: mainnet,
-    transport: http()
-  });
-
-  const session = createSessionTokenProvider(null);
-  const aureon = createAureonClient({
-    apiKey: process.env.AUREON_API_KEY,
-    getAccessToken: session.getAccessToken
-  });
-
-  // 1. Get nonce
-  const { message } = await aureon.getAuthNonce(account.address);
-
-  // 2. Sign EIP-191 message
-  const signature = await wallet.signMessage({ message });
-
-  // 3. Verify on server
-  const login = await aureon.verifyWallet({
-    address: account.address,
-    message,
-    signature
-  });
-
-  session.setToken(login.token);
-  return aureon;
-}
-```
-
-### 4.2 Integration via Ethers.js v6
-Useful for traditional Node.js servers or scripts using Ethers.
-
-```ts
-import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
-import { Wallet } from "ethers";
-
-async function authenticateEthers() {
-  const wallet = new Wallet(process.env.PRIVATE_KEY!);
-  const session = createSessionTokenProvider(null);
-  const aureon = createAureonClient({
-    apiKey: process.env.AUREON_API_KEY,
-    getAccessToken: session.getAccessToken
-  });
-
-  const { message } = await aureon.getAuthNonce(wallet.address);
-  const signature = await wallet.signMessage(message);
-
-  const login = await aureon.verifyWallet({
-    address: wallet.address,
-    message,
-    signature
-  });
-
-  session.setToken(login.token);
-  return aureon;
-}
-```
-
-### 4.3 Integration in Browser Frontends (window.ethereum)
-Suitable for operator portals and user-facing dashboards.
-
-```ts
-import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
-
-async function loginBrowser() {
-  if (!window.ethereum) throw new Error("No provider found");
-
-  const [address] = await window.ethereum.request({ method: "eth_requestAccounts" });
-  const session = createSessionTokenProvider(localStorage.getItem("aureon_token"));
-  
-  const aureon = createAureonClient({
-    apiKey: process.env.AUREON_API_KEY,
-    getAccessToken: session.getAccessToken
-  });
-
-  try {
-    // Validate current token
-    await aureon.me();
-  } catch (err) {
-    // Fetch new challenge
-    const { message } = await aureon.getAuthNonce(address);
-
-    // Sign using browser extension wallet
-    const signature = await window.ethereum.request({
-      method: "personal_sign",
-      params: [message, address]
-    });
-
-    const login = await aureon.verifyWallet({ address, message, signature });
-    session.setToken(login.token);
-    localStorage.setItem("aureon_token", login.token);
-  }
-
-  return aureon;
-}
+```bash
+export AUREON_API_KEY=aureon_....
+pnpm --filter @buildaureon/sdk cli me
+pnpm --filter @buildaureon/sdk cli sync
+pnpm --filter @buildaureon/sdk cli objectives
 ```
 
 ---
 
-## 5. Token Lifecycle and Recovery
+## 6. Security rules
 
-*   **Handling Token Expirations**: When a session token expires, the gateway returns a `401 UNAUTHORIZED` error. Integrators should register a callback in their request loops to renew the token automatically.
-*   **Multi-Wallet Routing**: If your application manages multiple vaults, instantiate separate `AureonClient` instances for each session token provider. Portfolios are partitioned by wallet address.
-*   **Logout Mechanics**: Invoking `aureon.logout()` invalidates the JWT on the gateway. The local cache should be cleared immediately:
-    ```ts
-    await aureon.logout();
-    session.clear();
-    localStorage.removeItem("aureon_token");
-    ```
+- Treat issued keys like passwords: pause, revoke, rotate in Developers.
+- Never commit keys or Bearer tokens.
+- Never put private keys in SDK env for “convenience.”
+- Do not log `Authorization` or `X-Aureon-Api-Key` headers.
+
+---
+
+## 7. Related docs
+
+- [Integration guide](./integration-guide.md)
+- [Security](./security.md)
+- [Client API](./client-api.md)
+- [Error model](./error-model.md)
