@@ -65,12 +65,15 @@ export type ObjectivePriority = "low" | "medium" | "high" | "critical";
 ### ObjectiveAutomationMode
 
 Determines how policy violations are corrected:
-*   `auto`: Fully automated restore loops. The system generates execution receipts immediately upon detecting a violation (SDK default).
-*   `manual`: The operator utility flags the violation, requiring an explicit approval step in the UI.
+
+* `auto` — Automatic restore coordination (SDK **only** supported mode; default).
+* `manual` — Operator utility Approve flow. Not used for SDK agent integrations.
 
 ```ts
 export type ObjectiveAutomationMode = "manual" | "auto";
 ```
+
+For `@buildaureon/sdk`, always omit `automationMode` or pass `"auto"`.
 
 ### ObjectivePolicy
 
@@ -149,7 +152,7 @@ Passed to `createObjective` to register a new rule:
 *   `automationMode` (Optional): Defaults to `auto` in the SDK.
 
 #### `UpdateObjectiveInput`
-Passed to `updateObjective` for partial updates. Note that `automationMode` is fixed at creation and cannot be updated.
+Passed to `updateObjective` for partial updates. `targetSymbol` and `automationMode` are fixed at creation and cannot be updated.
 
 ```ts
 export interface UpdateObjectiveInput {
@@ -159,7 +162,7 @@ export interface UpdateObjectiveInput {
   tolerance?: number;
   maxRiskScore?: number;
   reinvestRatio?: number;
-  targetSymbol?: string | null;
+  targetSymbol?: never; // Disallowed on updates
   automationMode?: never; // Disallowed on updates
 }
 ```
