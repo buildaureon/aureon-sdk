@@ -1,205 +1,206 @@
 # Architecture Guide
 
-This document provides a detailed breakdown of the AUREON system architecture. It outlines the components, data models, state machines, and cryptographic boundaries that govern the `@buildaureon/sdk` and its integration with the hosted AUREON API and the Robinhood Chain.
+System architecture for AUREON and how `@buildaureon/sdk` fits as the typed client for Automatic agent workflows.
+
+**Automation note:** The SDK is built for **Automatic** objectives (`automationMode: "auto"`). Manual Approve operator flows are handled in the utility, not as the primary SDK architecture.
 
 ---
 
-## 1. System Vision and Core Principles
+## 1. Vision
 
-AUREON acts as a decentralized, non-custodial "Financial Compass" (FCO) for digital assets. Instead of requiring users to execute manual, repetitive rebalancing trades or entrust their private keys to a centralized custodian, AUREON splits the system responsibilities:
-1.  **Continuous Policy Tracking**: The AUREON Health and Watchdog Engines continuously monitor capital allocations against user-defined objectives (e.g. maintaining a 20% stablecoin sleeve).
-2.  **Non-Custodial execution**: When allocations drift outside the allowed tolerance, the system generates execution plans. Rebalances are executed on-chain via Smart Vaults, but transaction signatures are produced locally by the user's wallet.
+AUREON is a non-custodial Financial Compass for onchain agents on Robinhood Chain:
+
+1. **Persistent policy** — objectives define target weights / risk bands and stay registered.
+2. **Continuous health** — watchdog + marks detect drift past tolerance.
+3. **Honest restore** — plans and receipts (`settlement: vault | staged`) make settlement transparent.
+4. **Local signing** — owner deposits/withdraws are prepared by the API and signed by the host.
 
 ---
 
-## 2. Component Architecture Overview
-
-The system is organized into three major layers: the **Client Layer** (where the SDK resides), the **Gateway Layer** (which hosts the policy and pricing engines), and the **On-chain Layer** (where actual capital is settled).
+## 2. Component layers
 
 ```mermaid
 graph TB
-  subgraph ClientBoundary [Client / Host Application Boundary]
-    App[Agent / Operator Script]
-    SDK["@buildaureon/sdk Client"]
-    Session[Session Provider]
-    Signer[Local Wallet Signer]
+  subgraph ClientBoundary [Client_boundary]
+    App[Agent_or_script]
+    SDK["@buildaureon/sdk"]
+    Session[Session_provider_optional]
+    Signer[Local_wallet_signer]
 
     App --> SDK
     App --> Session
     App --> Signer
   end
 
-  subgraph GatewayBoundary [AUREON Hosted Gateway Layer]
-    API[AUREON API Gateway]
-    DB[(PostgreSQL / Ledger Store)]
-    Oracles[Price Oracle Indexer]
-
-    subgraph Engines [Core Engines]
-      Health[Health Evaluation Engine]
-      Watchdog[Watchdog Engine]
-      Planner[Restoration Planner]
-    end
+  subgraph GatewayBoundary [Hosted_gateway]
+    API[AUREON_API]
+    DB[(Ledger_store)]
+    Oracles[Price_marks]
+    Health[Health_engine]
+    Watchdog[Watchdog]
+    Planner[Restore_planner]
 
     API --> DB
-    API --> Engines
-    Oracles --> Engines
+    API --> Health
+    API --> Watchdog
+    API --> Planner
+    Oracles --> Health
   end
 
-  subgraph ChainBoundary [Robinhood Chain Blockchain Layer]
-    RPC[Secure Node RPC]
-    Vaults[AUREON Smart Vaults]
-    Keepers[Automated Keeper Network]
+  subgraph ChainBoundary [Robinhood_Chain]
+    RPC[RPC]
+    Vaults[Smart_Vault]
+    Keepers[Keeper_network]
 
     RPC --> Vaults
     Keepers --> Vaults
   end
 
-  %% Data and Control Flows
-  SDK -->|"HTTPS REST Calls"| API
-  Signer -->|"Broadcast Signed Steps"| RPC
-  API -->|"Read Blockchain State"| RPC
-  Keepers -->|"Automated Rebalance Swaps"| Vaults
+  SDK -->|HTTPS_API_key| API
+  Signer -->|broadcast_owner_txs| RPC
+  API -->|read_balances| RPC
+  Keepers -->|allowlisted_swaps| Vaults
 ```
 
-### 2.1 The Client Layer
-*   **AureonClient**: The main class exported by `@buildaureon/sdk`. It coordinates REST requests, implements pre-flight input validation, maps HTTP errors to TypeScript classes, and manages retries.
-*   **Session Token Provider**: A stateful container that maintains the ephemeral JSON Web Token (JWT) retrieved during wallet signature verification.
-*   **Local Wallet Signer**: A private key management module (e.g. Viem, Ethers, or an HSM) controlled by the integrator. It signs transaction steps returned by the vault preparation endpoints.
+### 2.1 Client layer (`@buildaureon/sdk`)
 
-### 2.2 The Hosted Gateway Layer
-*   **API Gateway**: A Hono-based router exposing endpoints for managing objectives, synchronizing portfolio snapshots, preparing vault transactions, and querying timeline events.
-*   **Ledger Store**: A persistent relational database storing user-configured objectives, historic portfolio snapshots, execution receipts, and audit event logs.
-*   **Price Oracle Indexer**: Integrates with chain feeds to maintain real-time price feeds for all allowlisted vault assets.
-*   **Health Evaluation Engine**: Computes asset weights and checks deviations against objective targets.
-*   **Watchdog Engine**: Orchestrates the cron-like heartbeat check to verify if any active objective has entered a violation state.
-*   **Restoration Planner**: Computes the trade sizes and asset swaps needed to return a violating objective back to its target policy.
+| Piece | Role |
+| --- | --- |
+| `AureonClient` | Typed REST client, validation, retries, error mapping |
+| Issued API key | Wallet identity for control plane |
+| Session provider | Optional Bearer for utility-style sessions |
+| Host signer | Broadcasts prepare-deposit / prepare-withdraw steps |
 
-### 2.3 The On-chain Layer
-*   **AUREON Smart Vaults**: ERC-20 and ERC-4626 compatible smart contracts deployed on the Robinhood Chain. They hold the user's custody-free rebalancing capital.
-*   **Automated Keeper Network**: Off-chain worker bots that listen for restoration plans, call the smart vaults with keeper signatures, and execute swaps via decentralized liquidity pools.
+### 2.2 Gateway layer
+
+| Piece | Role |
+| --- | --- |
+| API | Objectives, portfolio sync, vault prepare, restore, timeline |
+| Ledger | Objectives, health snapshots, receipts, events |
+| Marks | Price inputs for weight math |
+| Health engine | Compares weights / risk to policy |
+| Watchdog | Heartbeat evaluation across active Auto objectives |
+| Planner | Builds restore plans (e.g. vault_swap) |
+
+### 2.3 On-chain layer
+
+| Piece | Role |
+| --- | --- |
+| Smart Vault | Holds rebalancing capital under owner + keeper rules |
+| Keepers | Execute Automatic restore swaps on allowlisted routes |
+| Owner txs | Deposit / withdraw via signed prepare steps |
 
 ---
 
-## 3. The Rebalancing Lifecycle
-
-Rebalancing is the process of moving an objective from a `violation` state back to a `healthy` state. The lifecycle involves multiple steps between the SDK, the gateway, and the blockchain.
+## 3. Automatic restore lifecycle
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant Host as Host Agent / Script
-  participant SDK as Aureon SDK
-  participant API as Hosted API Gateway
-  participant Vault as Smart Vault (Robinhood Chain)
+  participant Host as Agent
+  participant SDK as SDK
+  participant API as API
+  participant Vault as Smart_Vault
 
-  rect rgb(240, 248, 255)
-    Note over Host, API: Phase 1: Continuous Health Monitoring
-    Host->>SDK: refreshWatchdog()
-    SDK->>API: POST /watchdog/refresh
-    API->>API: Fetch current price feeds
-    API->>API: Evaluate active objective metrics
-    API-->>SDK: WatchdogRefreshResult (breaches array)
-    SDK-->>Host: Returns breaches & suggestions
-  end
+  Host->>SDK: refreshWatchdog()
+  SDK->>API: POST /watchdog/refresh
+  API-->>Host: breaches
 
-  rect rgb(255, 240, 245)
-    Note over Host, Vault: Phase 2: Restoration Planning
-    Host->>SDK: getRestorePlan(objectiveId)
-    SDK->>API: GET /objectives/:id/restore-plan
-    API->>API: Calculate optimal rebalance swaps
-    API-->>SDK: RestorePlan (vault_swap, amount, assets)
-    SDK-->>Host: Returns plan details
-  end
+  Host->>SDK: getRestorePlan(id)
+  SDK->>API: GET restore-plan
+  API-->>Host: RestorePlan
 
-  rect rgb(245, 255, 250)
-    Note over Host, Vault: Phase 3: Execution and Settlement
-    Host->>SDK: restoreObjective(objectiveId) (or runExecution)
-    SDK->>API: POST /executions/run
-    API->>Vault: Submit keeper-signed swap instruction
-    Vault->>Vault: Execute decentralized exchange swap
-    Vault-->>API: Emit Swap Log and TX Receipt
-    API-->>SDK: ExecutionReceipt (settlement: "vault", status: "confirmed")
-    SDK-->>Host: Return receipt with Transaction Hash
-  end
+  Host->>SDK: restoreObjective(id)
+  SDK->>API: POST restore
+  API->>Vault: keeper_allowlisted_swap
+  Vault-->>API: receipt
+  API-->>Host: ExecutionReceipt settlement
 ```
 
-### 3.1 Step 1: Heartbeat Evaluation
-The agent periodically calls `refreshWatchdog()`. The gateway retrieves the current token balances in the user's smart vault, fetches real-time mark prices, and computes the current allocation percentage.
+1. **Evaluate** — sync vault + wallet marks, compute weights.
+2. **Detect** — if `|current - target| > tolerance`, health → `violation`.
+3. **Plan** — planner emits a restore plan (often `vault_swap`).
+4. **Execute** — Automatic restore coordinates keeper vault execution.
+5. **Confirm** — receipt + timeline; health returns toward `healthy` when sizing/liquidity succeed.
 
-### 3.2 Step 2: Breach Detection
-If the current allocation drifts beyond the tolerance window, the Health Engine flags the objective's state as `violation` and creates a `TimelineEvent` of type `violation_detected`.
+### Capital book vs vault
 
-### 3.3 Step 3: Plan Generation
-The restoration planner calculates the difference between the current weight and the target weight. It translates this difference into a target amount of tokens to buy or sell, package-wrapped inside a `RestorePlan`.
-
-### 3.4 Step 4: Execution
-For automated objectives, calling `restoreObjective` instructs the gateway to dispatch a keeper rebalance transaction. The vault executes the trade using native liquidity, updating the token weights on-chain.
-
-### 3.5 Step 5: Confirmation
-The transaction completes on the Robinhood Chain, and the gateway records an `ExecutionReceipt` with `settlement: "vault"` and `status: "confirmed"`, marking the objective status back to `healthy`.
+- **Capital Book** — gateway portfolio used for weight math (`syncPortfolio`).
+- **Vault balances** — on-chain capital Automatic restores trade against.
+- Empty vault ⇒ Automatic restores cannot meaningfully settle on-chain even if policy exists.
 
 ---
 
-## 4. Subsystem Details
+## 4. Health evaluation (summary)
 
-### 4.1 Health Evaluation Formulas
-The Health Engine evaluates each of the four objective types using specific mathematical parameters:
+| Kind | Core idea |
+| --- | --- |
+| `stable_allocation` | Stable sleeve weight vs target ± tolerance |
+| `balanced_portfolio` | `targetSymbol` weight vs target ± tolerance |
+| `risk_ceiling` | Aggregate risk score vs `maxRiskScore` |
+| `reward_reinvestment` | Accrued rewards above actionable threshold |
 
-1.  **Stable Allocation (`stable_allocation`)**:
-    *   **Metric**: $W_{stable} = \frac{\sum \text{Notional}(StableCoins)}{\text{Total Portfolio Notional}}$
-    *   **Condition**: Target Weight $T$ and Tolerance $t$. The sleeve is healthy if $|W_{stable} - T| \le t$.
-    *   **Breach**: If $W_{stable} > T + t$, the planner generates a plan to sell stables. If $W_{stable} < T - t$, the planner generates a plan to buy stables.
+Exact fields live in [data-contracts.md](./data-contracts.md).
 
-2.  **Balanced Portfolio (`balanced_portfolio`)**:
-    *   **Metric**: $W_{targetSymbol} = \frac{\text{Notional}(TargetSymbol)}{\text{Total Portfolio Notional}}$
-    *   **Condition**: Target Weight $T$ and Tolerance $t$.
-    *   **Breach**: Triggers rebalancing if the target asset drifts outside the tolerance window.
+---
 
-3.  **Risk Ceiling (`risk_ceiling`)**:
-    *   **Metric**: $\text{RiskScore} = \sum (W_{asset} \times \text{VolatilityRisk}(Asset))$
-    *   **Condition**: Risk Score must remain below $\text{maxRiskScore}$.
-    *   **Breach**: Generates plans to swap highly volatile assets for stable assets if the portfolio risk exceeds the ceiling.
+## 5. Objective immutability
 
-4.  **Reward Reinvestment (`reward_reinvestment`)**:
-    *   **Metric**: $\text{AccumulatedRewards}$
-    *   **Condition**: Automatically sweeps yield generated by vault positions.
-    *   **Breach**: Triggers when accrued reward tokens exceed a cost-effective gas threshold, reinvesting them into the target sleeve.
+At create time the SDK records:
 
-### 4.2 Non-Custodial Vault Deposits and Withdrawals
-While rebalancing is handled by automated keepers, adding or removing funds from the vault requires manual developer wallet signatures.
+- `targetSymbol` (optional / required by kind)
+- `automationMode` (SDK default **`auto`**)
+
+Neither can be patched later via `updateObjective`. Recreate to change token or mode. Updates may change name, weights, tolerance, priority, and kind-specific numeric fields.
+
+---
+
+## 6. Non-custodial deposit / withdraw
 
 ```mermaid
 flowchart TD
-  Host[Host Application] -->|1. Request Calldata| SDK[Aureon SDK]
-  SDK -->|2. POST /vault/prepare-deposit| API[Aureon Gateway]
-  API -->|3. Compile ABI steps| SDK
-  SDK -->|4. Return Unsigned Steps| Host
-  Host -->|5. Sign steps locally| Wallet[Local Private Key]
-  Wallet -->|6. Broadcast Signed Calldata| Chain[Robinhood Chain RPC]
+  Host -->|prepare| SDK
+  SDK -->|POST_prepare| API
+  API -->|unsigned_steps| SDK
+  SDK -->|steps| Host
+  Host -->|sign_broadcast| Chain
 ```
 
-1.  **Allowance Validation**: The SDK checks if the vault contract is approved to spend the target token. If not, it includes an `approve` step.
-2.  **Deposit Compilation**: The gateway builds the transaction data for `deposit(amount)` or `depositETH(value)` calls.
-3.  **Execution**: The host signs and broadcasts the steps. The vault smart contract issues shares to the user's address, which are subsequently indexed by the gateway's sync loops.
+1. Host calls `prepareVaultDeposit` / `prepareVaultWithdraw`.
+2. API returns approve + deposit/withdraw steps as needed.
+3. Host signs and broadcasts.
+4. Later `syncPortfolio` / `getVault` reflect chain state.
 
 ---
 
-## 5. Trust and Security Postures
+## 7. Trust posture
 
-Integrators must understand the boundary lines between AUREON infrastructure and host applications:
-
-*   **API Key Scope**: API keys authenticate gateway access but cannot perform asset transfers. Compromising an API key does not give access to vault funds because withdrawals require direct owner signatures.
-*   **Signature Isolation**: Transactions are signed client-side. `@buildaureon/sdk` does not expose methods for loading private keys, keeping key storage isolated.
-*   **Keeper Swaps**: Keepers can only execute swaps within the allowlisted trading paths of the smart vault. They cannot transfer vault assets to third-party addresses.
+| Claim | Reality |
+| --- | --- |
+| API key steals funds | No — cannot sign owner withdrawals |
+| Keeper steals funds | No — allowlisted swaps only |
+| Staged = on-chain | No — label `settlement` honestly |
+| SDK holds keys | No — host signer only |
 
 ---
 
-## 6. Network Specifications
+## 8. Network (early access testnet)
 
-AUREON is deployed on the following network infrastructure:
+| Item | Value |
+| --- | --- |
+| Chain | Robinhood Chain testnet |
+| Chain ID | `46630` |
+| API | `https://api.aureonlabs.network` |
+| Explorer | Configure via product / env (`AUREON_EXPLORER_BASE`) |
 
-*   **Chain Name**: Robinhood Chain Testnet
-*   **Chain ID**: `46630`
-*   **Gas Token**: Native WETH / ETH
-*   **Block Explorer**: `https://explorer.robinhoodnet.org`
-*   **Oracles**: Private decentralized feeds push updates to vault-registered adapter contracts.
+Confirm live addresses and allowlisted symbols from the operator utility and API responses — do not hardcode stale addresses in agents.
+
+---
+
+## 9. Related docs
+
+- [Integration guide](./integration-guide.md)
+- [Auth](./auth.md)
+- [Security](./security.md)
+- [Client API](./client-api.md)
+- [Data contracts](./data-contracts.md)
