@@ -1,182 +1,217 @@
-# Detailed Error Model and Diagnostics
+# Error Model and Diagnostics
 
-This document outlines the error classification system used by `@buildaureon/sdk`. It provides field specifications, JSON payloads returned by the hosted API, and diagnostic patterns for production environments.
+Error classification, payloads, recovery patterns, and live failure modes for `@buildaureon/sdk`.
+
+**Automation note:** Examples assume **Automatic** objectives. Manual Approve error paths are out of scope for SDK agents.
 
 ---
 
-## 1. Core Exception Classes
+## 1. Exception hierarchy
 
-All custom exceptions thrown by the SDK extend the base class `AureonError`. The classes are organized to allow granular catch blocks based on failure categories.
+All SDK failures that represent API/client faults extend `AureonError`.
 
 ```mermaid
 graph TD
-  Error[native Error] --> AureonError[AureonError Base]
-  AureonError --> AureonValidationError[AureonValidationError HTTP 400]
-  AureonError --> AureonNotFoundError[AureonNotFoundError HTTP 404]
-  AureonError --> AureonConflictError[AureonConflictError HTTP 409]
-  AureonError --> AureonNetworkError[AureonNetworkError DNS / Connect]
-  AureonError --> AureonTimeoutError[AureonTimeoutError Abort / Limit]
+  Native[Error] --> Base[AureonError]
+  Base --> Val[AureonValidationError_400]
+  Base --> NotFound[AureonNotFoundError_404]
+  Base --> Conflict[AureonConflictError_409]
+  Base --> Net[AureonNetworkError]
+  Base --> Timeout[AureonTimeoutError]
 ```
 
-### Property Reference
+### Properties
+
+| Field | Meaning |
+| --- | --- |
+| `code` | Stable string for branching (`UNAUTHORIZED`, `VALIDATION_ERROR`, …) |
+| `status` | HTTP status, or `null` for pure network failures |
+| `details` | Optional structured metadata from the API |
+| `retryable` | Whether an immediate retry is reasonable |
+| `message` | Human-readable summary |
 
 ```ts
-export class AureonError extends Error {
-  /** Stable error code string. Use this for programmatic branching. */
-  readonly code: AureonErrorCode;
-  /** HTTP status code from the server, or null for network failures. */
-  readonly status: number | null;
-  /** Additional key-value metadata returned by the API (e.g. form fields validation). */
-  readonly details: Record<string, unknown> | null;
-  /** Indicates whether the request can be retried immediately. */
-  readonly retryable: boolean;
+import { isAureonError } from "@buildaureon/sdk";
 
-  constructor(
-    message: string,
-    code: AureonErrorCode,
-    status: number | null = null,
-    details: Record<string, unknown> | null = null
-  ) {
-    super(message);
-    this.name = this.constructor.name;
-    this.code = code;
-    this.status = status;
-    this.details = details;
-    this.retryable = isRetryableCode(code);
-
-    // Capture stack trace, preserving original V8 exception stack where supported
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
+try {
+  await aureon.restoreObjective(id);
+} catch (err) {
+  if (isAureonError(err)) {
+    console.error(err.code, err.status, err.details);
   }
+  throw err;
 }
 ```
 
 ---
 
-## 2. API JSON Error Payload Formats
+## 2. Common API payloads
 
-When an API request fails, the gateway returns a structured JSON payload. The SDK's HTTP transport layer automatically parses this payload and maps it to the appropriate error class.
-
-### 2.1 Validation Error Payload (HTTP 400)
-Returned when objective creation weights, names, or tolerances violate system rules.
+### Validation (400)
 
 ```json
 {
   "code": "VALIDATION_ERROR",
-  "message": "Create objective parameters failed validation checks",
+  "message": "Create objective parameters failed validation",
   "details": {
-    "name": "Objective display name must be at least 3 characters long",
-    "targetWeight": "Weight must be a number between 0.0 and 1.0",
-    "tolerance": "Tolerance must be a number between 0.0 and 0.5"
+    "targetWeight": "must be between 0 and 1",
+    "tolerance": "must be between 0 and 0.5"
   }
 }
 ```
 
-### 2.2 Conflict Error Payload (HTTP 409)
-Returned when modifying a resource that is currently locked or undergoing execution.
+Also covers locked-field updates (e.g. attempting to change `targetSymbol` / `automationMode` after create).
+
+### Unauthorized (401)
+
+```json
+{
+  "message": "Invalid API key",
+  "details": null
+}
+```
+
+Or, when an env bootstrap key is used without wallet identity:
+
+```json
+{
+  "message": "Wallet session required (env API keys cannot identify a wallet; use an issued developer key or Bearer)",
+  "details": null
+}
+```
+
+### Not found (404)
+
+Missing objective / key id / resource.
+
+### Conflict (409)
 
 ```json
 {
   "code": "CONFLICT",
-  "message": "Cannot modify objective state while rebalance swap is processing",
+  "message": "Cannot modify objective while restore is in flight",
   "details": {
-    "objectiveId": "obj_01h8v12x8p8p3z2v1q45r3m2e1",
-    "executionId": "exec_01h8v5t7p8p3z2v1q45r3m2e99",
+    "objectiveId": "obj_...",
     "status": "pending_confirmation"
   }
 }
 ```
 
-### 2.3 Rate Limit Payload (HTTP 429)
-Returned when requests exceed rate limits.
+Also appears when restore is rejected because capital / plan / vault state conflicts with the request.
+
+### Rate limit (429)
 
 ```json
 {
   "code": "RATE_LIMITED",
-  "message": "Too many requests. Please slow down.",
-  "details": {
-    "retryAfterSeconds": 15,
-    "limit": 100,
-    "windowMs": 60000
-  }
+  "message": "Too many requests",
+  "details": { "retryAfterSeconds": 15 }
 }
 ```
 
----
+### Server (5xx)
 
-## 3. Custom Diagnostics and Logging Hooks
-
-Integrators can register a logger interface during client construction to track network requests, retries, and errors in production.
-
-```ts
-import { createAureonClient, AureonLogger } from "@buildaureon/sdk";
-
-const productionLogger: AureonLogger = {
-  debug(msg, ctx) { console.debug(`[DEBUG] ${msg}`, ctx || ""); },
-  info(msg, ctx) { console.info(`[INFO] ${msg}`, ctx || ""); },
-  warn(msg, ctx) { console.warn(`[WARN] ${msg}`, ctx || ""); },
-  error(msg, ctx) {
-    // Send critical anomalies to third-party alert services
-    if (ctx?.code === "SERVER_ERROR" || ctx?.code === "CONFLICT") {
-      sendToSentry(msg, ctx);
-    }
-    console.error(`[ERROR] ${msg}`, ctx || "");
-  }
-};
-
-const aureon = createAureonClient({
-  apiKey: process.env.AUREON_API_KEY,
-  logger: productionLogger
-});
-```
+Retryable when `maxRetries` > 0. Alert ops if persistent.
 
 ---
 
-## 4. Operational Recovery Patterns
+## 3. Operational recovery map
 
 ```mermaid
 flowchart TD
-  Catch[Catch AureonError] --> CodeBranch{Switch error.code}
+  Catch[Catch_AureonError] --> Code{error.code_or_status}
 
-  CodeBranch -->|UNAUTHORIZED| HandleAuth[Clear storage and restart EIP-191 signature challenge]
-  CodeBranch -->|VALIDATION_ERROR| HandleValidation[Parse details dictionary and highlight fields in UI]
-  CodeBranch -->|NOT_FOUND| HandleNotFound[Redirect to list and show warning toast]
-  CodeBranch -->|RATE_LIMITED| HandleRate[Wait retryAfterSeconds or exponential backoff then retry]
-  CodeBranch -->|TIMEOUT| HandleTimeout[Increase timeoutMs client configuration and retry]
-  CodeBranch -->|SERVER_ERROR| HandleServer[Alert ops team and fallback to staged settlement]
+  Code -->|UNAUTHORIZED| Auth[Rotate_issued_key_or_refresh_Bearer]
+  Code -->|VALIDATION_ERROR| ValFix[Fix_inputs_recreate_if_locked_fields]
+  Code -->|NOT_FOUND| Missing[Refresh_lists_check_ids]
+  Code -->|CONFLICT| Wait[Backoff_recheck_health_and_plan]
+  Code -->|RATE_LIMITED| Sleep[Sleep_retryAfter_or_retryDelayMs]
+  Code -->|TIMEOUT_NETWORK| Retry[Increase_timeoutMs_enable_maxRetries]
+  Code -->|5xx| Alert[Alert_ops_retry_bounded]
+```
+
+| Situation | Agent action |
+| --- | --- |
+| Invalid / paused key | Stop loop; operator rotates Developers key |
+| Bootstrap key alone | Switch to issued key |
+| Vault empty on restore | Prepare deposit → broadcast → sync → retry |
+| Locked field on update | Recreate objective |
+| Conflict mid-restore | Back off; read timeline / executions |
+| Staged settlement returned | Do not treat as on-chain success |
+
+---
+
+## 4. Logging hooks
+
+```ts
+import { createAureonClient } from "@buildaureon/sdk";
+
+const aureon = createAureonClient({
+  apiKey: process.env.AUREON_API_KEY!,
+  logger: {
+    debug: (msg, ctx) => console.debug(msg, ctx),
+    info: (msg, ctx) => console.info(msg, ctx),
+    warn: (msg, ctx) => console.warn(msg, ctx),
+    error: (msg, ctx) => {
+      // forward to your APM — never include secrets from ctx
+      console.error(msg, ctx);
+    },
+  },
+});
 ```
 
 ---
 
-## 5. Unit Testing and Mocking Guide
+## 5. Client-side validation vs server errors
 
-When writing tests for your agent rebalancing scripts, you can assert error handling behavior using mock response status codes.
+The SDK normalizes create/update inputs before HTTP (weights, locked fields, automation defaults). Failures can therefore happen:
+
+1. **Preflight** in the SDK (no network), or
+2. **Gateway** after HTTP (allowlists, vault state, conflicts).
+
+Always catch with `isAureonError` and inspect `code` + `details`.
+
+---
+
+## 6. Unit test sketch
 
 ```ts
-import { describe, it } from "node:test";
-import assert from "node:assert";
-import { AureonClient, AureonValidationError, isAureonError } from "@buildaureon/sdk";
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  createAureonClient,
+  isAureonError,
+  AureonValidationError,
+} from "@buildaureon/sdk";
 
-describe("SDK Error Handling Tests", () => {
-  it("should throw AureonValidationError on empty objective name", async () => {
-    const client = new AureonClient({ baseUrl: "https://api.aureonlabs.network" });
-
-    try {
-      await client.createObjective({
-        name: "  ", // Empty string
-        kind: "stable_allocation",
-        targetWeight: 0.2,
-        tolerance: 0.02
-      });
-      assert.fail("Should have failed pre-flight validation");
-    } catch (err) {
-      assert.ok(isAureonError(err));
-      assert.strictEqual(err.code, "VALIDATION_ERROR");
-      assert.ok(err instanceof AureonValidationError);
-      assert.match(err.message, /length/);
-    }
+test("empty objective name fails validation", async () => {
+  const client = createAureonClient({
+    baseUrl: "https://api.aureonlabs.network",
+    apiKey: "test",
   });
+
+  await assert.rejects(
+    () =>
+      client.createObjective({
+        name: "  ",
+        kind: "balanced_portfolio",
+        targetWeight: 0.2,
+        tolerance: 0.02,
+        targetSymbol: "WETH",
+      }),
+    (err: unknown) =>
+      isAureonError(err) &&
+      err instanceof AureonValidationError &&
+      err.code === "VALIDATION_ERROR"
+  );
 });
 ```
-Using programmatic switches on `error.code` ensures your code resists backend modifications.
+
+---
+
+## 7. Related docs
+
+- [Transport](./transport.md)
+- [Auth](./auth.md)
+- [Integration guide](./integration-guide.md)
+- [Client API](./client-api.md)
