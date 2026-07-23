@@ -1,74 +1,120 @@
 # Security Model and Practices
 
-This document outlines the security architecture of `@buildaureon/sdk`, its integration with Smart Vault smart contracts, and practices for secure production environments.
+Security architecture for `@buildaureon/sdk`: trust boundaries, credentials, vault signing, and production checklist.
+
+**Automation note:** SDK agents should run **Automatic** objectives only. Manual Approve flows are utility concerns, not SDK security surface.
 
 ---
 
-## 1. Gateway Trust Boundaries
+## 1. Gateway trust boundaries
 
-AUREON operates on a non-custodial gateway model. The API acts as an analytical policy engine, price indexer, and coordinator, but does not control asset custody.
+AUREON is non-custodial. The API is a policy engine, price indexer, and coordinator. It does not hold private keys and does not broadcast owner withdrawals for you.
 
 ```mermaid
 flowchart TD
-  Host[Host Application Boundary] -->|1. Request Calldata| Gateway[Aureon API Gateway]
-  Gateway -->|2. Generate Unsigned Steps| Host
-  Host -->|3. Sign Locally| Wallet[Private Key / HSM / KMS]
-  Wallet -->|4. Broadcast Tx| Chain[Robinhood Chain RPC]
+  Host[Host_application] -->|1_request_calldata| Gateway[Aureon_API]
+  Gateway -->|2_unsigned_steps| Host
+  Host -->|3_sign_locally| Wallet[Private_key_or_KMS]
+  Wallet -->|4_broadcast| Chain[Robinhood_Chain_RPC]
 
-  subgraph OnChain [Smart Contract Controls]
-    Vault[Smart Vault Contract]
-    DX[Decentralized Exchanges]
-    Vault -->|Only allowlisted actions| DX
+  subgraph OnChain [Smart_contract_controls]
+    Vault[Smart_Vault]
+    DX[Allowlisted_DEX_routes]
+    Vault -->|keeper_swaps_only| DX
   end
-  Wallet -.->|Call deposit / withdraw| Vault
+  Wallet -.->|owner_deposit_withdraw| Vault
 ```
 
-### 1.1 Private Key Isolation
-The SDK provides no features for loading or storing private keys or mnemonics. The host application handles transaction signing locally using EIP-191 signatures or raw transaction serializers. Because private keys are never transmitted to the AUREON API, a gateway breach cannot compromise user keys.
+### 1.1 Private key isolation
 
-### 1.2 Unsigned Calldata Generation
-Endpoints like `prepareVaultDeposit` and `prepareVaultWithdraw` return structured calldata. You can decode and verify this data against open-source contract ABIs before signing and broadcasting.
+The SDK never loads, stores, or transmits private keys or mnemonics. Signing stays in the host (viem, ethers, HSM, KMS). A gateway breach cannot drain vaults by itself.
 
----
+### 1.2 Issued API keys are wallet credentials
 
-## 2. Smart Contract Access Control
+An **issued** developer key identifies the bound wallet for control-plane operations (sync, objectives, health, restore, prepare). Treat it like a password:
 
-The AUREON Smart Vault contracts on the Robinhood Chain enforce strict permission boundaries:
+- Create in utility **Developers**
+- Store in env / secret manager
+- Pause or revoke on leak
+- Prefer one key per agent host
 
-*   **Owner Gate**: Only the address that deployed the vault (or was assigned ownership) can execute direct withdrawals.
-*   **Allowlisted Keepers**: Swap routes can only be executed by registered keeper addresses. The keeper cannot withdraw tokens to external third-party addresses; they are restricted to swapping allowlisted assets within the vault.
-*   **Limits and Slippage**: The contracts enforce maximum slippage tolerances on swaps to prevent sandwich attacks and price manipulation.
+Env bootstrap keys on the server unlock product access only. They do **not** identify a wallet and must not be used as agent identity.
 
----
+### 1.3 Unsigned calldata
 
-## 3. Credentials and API Keys Management
-
-*   **Zero Commits**: Never check API keys into git repositories. Load keys from environment variables or secure stores (e.g. AWS Secrets Manager, HashiCorp Vault).
-*   **CI/CD Configuration**: If you run tests in automated pipelines (e.g., GitHub Actions, GitLab CI), store credentials as encrypted secrets.
-*   **Frontend Mitigation**: Frontends should query an intermediate backend service instead of exposing API keys directly to the client bundle.
-*   **Key Rotation**: Generate replacement credentials and deprecate compromised tokens in the developer console immediately if a breach is suspected.
+`prepareVaultDeposit` / `prepareVaultWithdraw` return structured steps. Decode against published ABIs before signing. Broadcast is always host-side.
 
 ---
 
-## 4. Understanding Staged Settlement
+## 2. What a compromised API key can and cannot do
 
-AUREON receipts contain a `settlement` field:
+| Can | Cannot |
+| --- | --- |
+| Read portfolio, vault, health, timeline | Sign owner deposit/withdraw txs |
+| Create / update / pause Auto objectives | Withdraw vault funds to arbitrary addresses |
+| Request restore plans and trigger Automatic restore coordination | Bypass vault keeper allowlists |
+| Create additional developer keys under the same wallet | Recover a private key |
 
-*   **Vault Settlement (`vault`)**: Transactions are settled on-chain on the Robinhood Chain. These have a real transaction hash and are verifiable via explorer.
-*   **Staged Settlement (`staged`)**: Simulated rebalances that update gateway database states without broadcasting transactions. This is used during rehearsals and testing.
-
-> [!WARNING]
-> Do not display staged rebalances as completed on-chain transactions in your dashboards. Always check the `settlement` attribute before presenting transaction confirmations to operators.
+Keeper-driven Automatic restores execute allowlisted vault swaps. Keepers cannot send vault assets to arbitrary third parties.
 
 ---
 
-## 5. Production Checklist
+## 3. Smart vault access control
 
-Review this security checklist before deploying your rebalancing daemon to production:
+- **Owner path:** deposits and withdrawals require owner-signed txs from prepare steps.
+- **Keeper path:** Automatic restores use registered keepers on allowlisted routes only.
+- **Slippage / limits:** vault and planner enforce execution bounds to reduce bad fills.
 
-- [ ] **Private Key Isolation**: Confirm that private keys are stored in environment variables or KMS, and are never logged or exposed.
-- [ ] **EIP-191 Handshake**: Ensure all user logins use the cryptographic challenge-response flow (`verifyWallet`).
-- [ ] **Scope Checks**: Verify that the API Key has the minimum permissions needed to run the target agent.
-- [ ] **Gas Auditing**: Maintain a gas reserve on the signing wallet to cover deposit and withdrawal transactions on the Robinhood Chain.
-- [ ] **Staged Handling**: Confirm your user interface clearly distinguishes between staged and vault settlements.
-- [ ] **Slippage Bounds**: Configure appropriate slippage tolerances on objectives to prevent execution failure during market volatility.
+---
+
+## 4. Settlement honesty
+
+Every execution receipt includes `settlement`:
+
+| Value | Meaning | UI rule |
+| --- | --- | --- |
+| `vault` | On-chain vault / keeper settlement with verifiable hash | May show as on-chain |
+| `staged` | Ledger-local / rehearsal — not a chain settlement | Must **not** be labeled as on-chain |
+
+Never collapse staged into “confirmed on Robinhood Chain.”
+
+---
+
+## 5. Transport and logging hygiene
+
+- Prefer HTTPS production base URL `https://api.aureonlabs.network`.
+- Do not log raw `Authorization` or `X-Aureon-Api-Key`.
+- Redact prepare step calldata in public logs if it includes sensitive amounts in your threat model.
+- Set `timeoutMs` / `maxRetries` deliberately for agent loops (see [transport.md](./transport.md)).
+
+---
+
+## 6. Frontend vs agent hosts
+
+| Host | Guidance |
+| --- | --- |
+| Server agent / cron | Issued API key in secret store; private key in KMS if broadcasting deposits |
+| Browser SPA | Do **not** embed issued API keys in public bundles; proxy through your backend |
+| Operator utility | Wallet Bearer only — separate from SDK agent auth |
+
+---
+
+## 7. Production checklist
+
+- [ ] Issued developer key (not a shared env bootstrap key) in secrets
+- [ ] Private keys isolated from the API key and never logged
+- [ ] Deposit/withdraw broadcast path reviewed and ABI-checked
+- [ ] Automatic objectives only in SDK loops
+- [ ] UI / agent summaries honor `settlement: vault | staged`
+- [ ] Gas reserve on the signing wallet for owner txs
+- [ ] Key rotation plan (pause/revoke in Developers)
+- [ ] Error handling branches on `error.code` (see [error-model.md](./error-model.md))
+
+---
+
+## 8. Related docs
+
+- [Auth](./auth.md)
+- [Architecture](./architecture.md)
+- [Integration guide](./integration-guide.md)
+- [Error model](./error-model.md)
