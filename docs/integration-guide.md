@@ -1,153 +1,195 @@
 # Production Integration Guide
 
-This guide details how to integrate `@buildaureon/sdk` into server-side agents, automated rebalancing scripts, and frontend user interfaces.
+Integrate `@buildaureon/sdk` into server-side agents and automated rebalancing loops against the live AUREON API.
+
+**Automation note:** SDK integrations support **Automatic mode only** (`automationMode: "auto"` — the default). Do not build Manual Approve agent loops with the SDK; use the operator utility for Manual workflows.
 
 ---
 
-## 1. End-to-End Integration Plan
-
-Follow this six-step sequence to configure and start the automated rebalancing loop.
+## 1. End-to-end agent loop
 
 ```mermaid
 flowchart TD
-  Client[1. Client Init] --> Auth[2. Sign Handshake]
-  Auth --> Sync[3. Sync Capital Book]
-  Sync --> Deposit[4. Fund Vault]
-  Deposit --> Objective[5. Add Objective]
-  Objective --> Watchdog[6. Run Heartbeat Loop]
-  Watchdog --> Watchdog
+  Init[1_issued_API_key_client] --> Sync[2_sync_Capital_Book]
+  Sync --> Fund[3_fund_vault_if_empty]
+  Fund --> Obj[4_create_Auto_objective]
+  Obj --> Loop[5_watchdog_heartbeat]
+  Loop -->|breach| Plan[6_restore_plan]
+  Plan --> Restore[7_restoreObjective]
+  Restore --> Loop
 ```
 
-### Step 1: Client Construction
-Set up the client, leveraging environment variables for configuration options.
+### Step 1 — Client
+
+```ts
+import { createAureonClient } from "@buildaureon/sdk";
+
+export const aureon = createAureonClient({
+  baseUrl: process.env.AUREON_API_URL || "https://api.aureonlabs.network",
+  apiKey: process.env.AUREON_API_KEY!, // issued Developers key
+  timeoutMs: 30_000,
+  maxRetries: 2,
+  retryDelayMs: 500,
+});
+
+const me = await aureon.me();
+console.log("operating as", me.walletAddress);
+```
+
+Optional Bearer (usually unnecessary with an issued key):
 
 ```ts
 import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
 
-const session = createSessionTokenProvider(
-  typeof localStorage !== "undefined"
-    ? localStorage.getItem("aureon_bearer_token")
-    : process.env.AUREON_TOKEN ?? null
-);
-
+const session = createSessionTokenProvider(process.env.AUREON_TOKEN ?? null);
 export const aureon = createAureonClient({
   baseUrl: process.env.AUREON_API_URL || "https://api.aureonlabs.network",
   apiKey: process.env.AUREON_API_KEY ?? null,
-  getAccessToken: session.getAccessToken
+  getAccessToken: session.getAccessToken,
 });
 ```
 
-### Step 2: EIP-191 Cryptographic Verification
-Authenticate session tokens using cryptographic challenge-response verification.
-
-```ts
-async function authenticate(walletAddress: string, signerFn: (msg: string) => Promise<string>) {
-  // 1. Fetch challenge message
-  const { message } = await aureon.getAuthNonce(walletAddress);
-
-  // 2. Sign EIP-191 personal message locally
-  const signature = await signerFn(message);
-
-  // 3. Post verification payload
-  const { token } = await aureon.verifyWallet({
-    address: walletAddress,
-    message,
-    signature
-  });
-
-  session.setToken(token);
-  return token;
-}
-```
-
-### Step 3: Align the Capital Book
-Populate local assets into the gateway database.
+### Step 2 — Sync Capital Book
 
 ```ts
 const { portfolio, chainId } = await aureon.syncPortfolio();
-console.log(`Portfolios aligned for Chain ID ${chainId}. Total Valuation: $${portfolio.totalNotionalUsd}`);
+console.log({
+  chainId,
+  positions: portfolio.positions.length,
+  totalNotionalUsd: portfolio.totalNotionalUsd,
+});
 ```
 
-### Step 4: Fund the Smart Vault
-Automated objectives rebalance tokens held in your Smart Vault on the Robinhood Chain. Allocate capital into the vault before creating rules.
+Prefer `syncPortfolio()` over hand-seeded books in production. Use `setPortfolio` only for controlled rehearsals.
+
+### Step 3 — Fund vault when needed
+
+Automatic restores require vault capital. Prepare returns **unsigned** steps — your host signs and broadcasts.
 
 ```ts
-async function ensureVaultFunded(symbol: string, amount: string, executeTx: (step: any) => Promise<string>) {
+import type { VaultPrepareResult } from "@buildaureon/sdk";
+
+async function ensureVaultFunded(
+  symbol: string,
+  amount: string,
+  broadcast: (step: VaultPrepareResult["steps"][number]) => Promise<string>
+) {
   const status = await aureon.getVaultStatus();
-  if (status.empty) {
-    const prep = await aureon.prepareVaultDeposit({ symbol, amount });
-    for (const step of prep.steps) {
-      console.log(`Executing step: ${step.label}`);
-      const txHash = await executeTx(step);
-      console.log(`Step complete. Hash: ${txHash}`);
-    }
+  if (!status.empty && status.canRestore) return status;
+
+  const prep = await aureon.prepareVaultDeposit({ symbol, amount });
+  for (const step of prep.steps) {
+    const hash = await broadcast(step);
+    console.log(step.label, hash);
   }
+
+  return aureon.getVaultStatus();
 }
 ```
 
-### Step 5: Register the Objective
-Create the objective. SDK integrations default to `automationMode: "auto"`.
+Typical broadcast (viem sketch):
+
+```ts
+// host-owned — not part of the SDK
+await walletClient.sendTransaction({
+  to: step.to,
+  data: step.data,
+  value: step.value ? BigInt(step.value) : 0n,
+});
+```
+
+### Step 4 — Create an Automatic objective
 
 ```ts
 const objective = await aureon.createObjective({
-  name: "Liquid Stable Reserves",
-  kind: "stable_allocation",
-  targetWeight: 0.30,
-  tolerance: 0.03
+  name: "Maintain 20% WETH",
+  kind: "balanced_portfolio",
+  targetWeight: 0.2,
+  tolerance: 0.03,
+  targetSymbol: "WETH",
+  // automationMode defaults to "auto" — keep it that way for SDK agents
+  priority: "medium",
 });
-console.log(`Objective ${objective.name} registered. Status: ${objective.status}`);
 ```
 
-### Step 6: Execute the Watchdog Loop
-Poll the gateway regularly to check policy health and execute restorations.
+**Locks:** `targetSymbol` and `automationMode` cannot change after create. Recreate the objective to change token or mode.
+
+### Step 5 — Watchdog heartbeat
 
 ```ts
-async function watchdogHeartbeat() {
-  try {
-    const result = await aureon.refreshWatchdog();
-    console.log(`Watchdog completed at ${result.refreshedAt}. System state: ${result.breaches.length} breaches.`);
+async function heartbeat() {
+  const refreshed = await aureon.refreshWatchdog();
+  console.log("breaches", refreshed.breaches.length);
 
-    for (const breach of result.breaches) {
-      const plan = await aureon.getRestorePlan(breach.objectiveId);
-      if (plan.kind === "vault_swap") {
-        const receipt = await aureon.restoreObjective(breach.objectiveId);
-        console.log(`Rebalance executed. Settlement: ${receipt.settlement}, Hash: ${receipt.transactionHash}`);
-      }
-    }
-  } catch (error) {
-    console.error("Watchdog heartbeat failed:", error);
+  for (const breach of refreshed.breaches) {
+    const plan = await aureon.getRestorePlan(breach.objectiveId);
+    console.log("plan", plan.kind, plan);
+
+    const receipt = await aureon.restoreObjective(breach.objectiveId);
+    console.log({
+      settlement: receipt.settlement, // "vault" | "staged"
+      status: receipt.status,
+      tx: receipt.transactionHash,
+    });
   }
+
+  const health = await aureon.getHealth();
+  return health;
 }
 ```
 
+### Step 6 — Verify
+
+```ts
+await aureon.getHealth(objective.id);
+await aureon.getTimeline(objective.id);
+await aureon.listExecutions(objective.id);
+```
+
+Always branch UI/agent copy on `receipt.settlement`.
+
 ---
 
-## 2. Advanced Scripting Guidelines
+## 2. Recommended objective kinds for agents
 
-### 2.1 Implementing daemon runners
-For long-running processes, wrap the heartbeat logic in daemon controllers like PM2 or run them as systemd services.
+| Kind | Typical use |
+| --- | --- |
+| `balanced_portfolio` | Hold `targetSymbol` near a weight band |
+| `stable_allocation` | Keep a stable sleeve near a weight |
+| `risk_ceiling` | Cap portfolio risk score |
+| `reward_reinvestment` | Sweep rewards into a sleeve |
 
-#### PM2 Configuration (`ecosystem.config.js`)
+Start with one Automatic `balanced_portfolio` objective and a funded vault before adding more policies.
+
+---
+
+## 3. Daemon runners
+
+### PM2
+
 ```js
 module.exports = {
-  apps: [{
-    name: "aureon-agent-loop",
-    script: "./dist/index.js",
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    env: {
-      NODE_ENV: "production",
-      AUREON_API_URL: "https://api.aureonlabs.network"
-    }
-  }]
+  apps: [
+    {
+      name: "aureon-agent-loop",
+      script: "./dist/index.js",
+      instances: 1,
+      autorestart: true,
+      env: {
+        NODE_ENV: "production",
+        AUREON_API_URL: "https://api.aureonlabs.network",
+        // AUREON_API_KEY from secret store / PM2 ecosystem secrets
+      },
+    },
+  ],
 };
 ```
 
-#### Systemd Service (`/etc/systemd/system/aureon.service`)
+### systemd
+
 ```ini
 [Unit]
-Description=Aureon Rebalance Watchdog Daemon
+Description=AUREON Automatic restore agent
 After=network.target
 
 [Service]
@@ -163,34 +205,53 @@ Environment=NODE_ENV=production
 WantedBy=multi-user.target
 ```
 
-### 2.2 Server-Side Logger Configuration (Pino / Winston)
-Log JSON payloads to persistent logging collectors.
+### Logging
 
 ```ts
-import winston from "winston";
 import { createAureonClient } from "@buildaureon/sdk";
 
-const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.json(),
-  transports: [new winston.transports.File({ filename: "aureon-combined.log" })]
-});
-
 const aureon = createAureonClient({
-  apiKey: process.env.AUREON_API_KEY,
+  apiKey: process.env.AUREON_API_KEY!,
   logger: {
-    debug: (msg, ctx) => logger.debug(msg, ctx),
-    info: (msg, ctx) => logger.info(msg, ctx),
-    warn: (msg, ctx) => logger.warn(msg, ctx),
-    error: (msg, ctx) => logger.error(msg, ctx)
-  }
+    debug: (msg, ctx) => console.debug(msg, ctx),
+    info: (msg, ctx) => console.info(msg, ctx),
+    warn: (msg, ctx) => console.warn(msg, ctx),
+    error: (msg, ctx) => console.error(msg, ctx),
+  },
 });
 ```
 
+Never log API keys, Bearer tokens, or private keys.
+
 ---
 
-## 3. Frontend Deployment (SPA/Vite Environments)
+## 4. Frontend / SPA notes
 
-*   **Credential Leakage Prevention**: Never commit `AUREON_API_KEY` to public repositories. Deploy client credentials via backend server API proxy routes.
-*   **CORS Configurations**: The production gateway allows request origins matching allowlisted domains configured in the Developer console. For local development, localhost calls are permitted.
-*   **Decoupled loop execution**: Frontend interfaces should only allow users to manage objectives and inspect histories. Keep the active rebalancing loops (`refreshWatchdog` and `restoreObjective`) on secure server-side cron loops.
+- Do not ship issued API keys in public browser bundles.
+- Prefer a backend proxy for agent credentials.
+- Keep `refreshWatchdog` / `restoreObjective` loops on the server.
+- Browser operator UX is the utility app (wallet session), not the SDK agent path.
+
+---
+
+## 5. Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| 401 invalid key | Wrong / paused / revoked key | Rotate in Developers |
+| 401 need issued key | Env bootstrap key alone | Use an issued Developers key |
+| Vault empty / cannot restore | No vault capital | `prepareVaultDeposit` → broadcast → sync |
+| Update rejects symbol/mode | Locked at create | Recreate objective |
+| Restore receipt `staged` | Ledger-local path | Do not claim on-chain |
+| Health still violated after restore | Prices / sizing / liquidity | Re-read plan, vault balances, timeline |
+| Network / timeout | RPC or API latency | Raise `timeoutMs`, set `maxRetries` |
+
+---
+
+## 6. Related docs
+
+- [Auth](./auth.md)
+- [Architecture](./architecture.md)
+- [Client API](./client-api.md)
+- [Error model](./error-model.md)
+- [Security](./security.md)
