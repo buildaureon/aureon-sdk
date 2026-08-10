@@ -59,6 +59,8 @@ export interface Objective {
   updatedAt: string;
   lastEvaluatedAt: string | null;
   lastExecutionId: string | null;
+  verifiedOnChain?: boolean;
+  configHash?: string;
 }
 
 /**
