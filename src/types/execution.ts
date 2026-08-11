@@ -6,6 +6,8 @@
  * path is unavailable. Wrap/unwrap ETH↔WETH is client-side via RestorePlan.
  */
 
+import type { RegistryRef } from "./registry.js";
+
 export interface ExecutionReceipt {
   id: string;
   objectiveId: string;
@@ -21,6 +23,7 @@ export interface ExecutionReceipt {
    * `"staged"`: capital-book restore only (honest non-finality label).
    */
   settlement?: "staged" | "vault";
+  registryRef?: RegistryRef;
 }
 
 /** Client-side restore action: wrap/unwrap ETH↔WETH or keeper vault swap. */
