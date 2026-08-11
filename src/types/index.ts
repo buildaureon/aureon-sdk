@@ -37,6 +37,13 @@ export {
 } from "./timeline.js";
 
 export type { ExecutionReceipt, RestorePlan, RestorePlanKind } from "./execution.js";
+export type {
+  RegistryStatus,
+  RegistryRef,
+  ObjectiveRegistryRecord,
+  PrepareRegistryResult,
+  ObjectiveRegistryLookup,
+} from "./registry.js";
 export {
   isConfirmedExecution,
   isVaultSettlement,
