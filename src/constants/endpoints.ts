@@ -26,6 +26,7 @@ export const ENDPOINTS = {
   authDevLogin: "/auth/dev-login",
   authMe: "/auth/me",
   developerApiKeys: "/developer/api-keys",
+  registryStatus: "/registry/status",
 } as const;
 
 export function objectivePath(id: string): string {
@@ -50,4 +51,16 @@ export function objectiveRestorePath(id: string): string {
 
 export function developerApiKeyPath(id: string): string {
   return `${ENDPOINTS.developerApiKeys}/${encodeURIComponent(id)}`;
+}
+
+export function registryObjectivePath(id: string): string {
+  return `/registry/objectives/${encodeURIComponent(id)}`;
+}
+
+export function registryPreparePath(id: string): string {
+  return `${registryObjectivePath(id)}/prepare-register`;
+}
+
+export function registryConfirmPath(id: string): string {
+  return `${registryObjectivePath(id)}/confirm`;
 }
