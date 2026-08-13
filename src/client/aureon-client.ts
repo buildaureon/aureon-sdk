@@ -25,6 +25,9 @@ import {
   objectiveResumePath,
   objectiveRestorePath,
   objectiveRestorePlanPath,
+  registryObjectivePath,
+  registryPreparePath,
+  registryConfirmPath,
 } from "../constants/endpoints.js";
 import { AureonValidationError } from "../errors/base.js";
 import {
@@ -41,6 +44,12 @@ import {
   resolveTimeoutMs,
 } from "../types/client-options.js";
 import type { ExecutionReceipt, RestorePlan } from "../types/execution.js";
+import type {
+  ObjectiveRegistryLookup,
+  ObjectiveRegistryRecord,
+  PrepareRegistryResult,
+  RegistryStatus,
+} from "../types/registry.js";
 import type { ObjectiveHealth } from "../types/health.js";
 import type {
   ApplyMarketEventInput,
@@ -440,6 +449,47 @@ export class AureonClient {
       path
     );
     return result.executions;
+  }
+
+  /** Returns Phase 2 ObjectiveRegistry deployment status. Auth required. */
+  async getRegistryStatus(): Promise<RegistryStatus> {
+    return requestJson(this.transport, ENDPOINTS.registryStatus);
+  }
+
+  /** Returns on-chain registry record for an objective when registered. Auth required. */
+  async getObjectiveRegistry(objectiveId: string): Promise<ObjectiveRegistryLookup> {
+    assertId(objectiveId, "objective id");
+    return requestJson(this.transport, registryObjectivePath(objectiveId));
+  }
+
+  /**
+   * Prepares wallet-signed calldata to register an objective on ObjectiveRegistry.
+   * Auth required.
+   */
+  async prepareObjectiveRegistry(objectiveId: string): Promise<PrepareRegistryResult> {
+    assertId(objectiveId, "objective id");
+    return requestJson(this.transport, registryPreparePath(objectiveId), {
+      method: "POST",
+    });
+  }
+
+  /**
+   * Confirms an on-chain registration after the wallet broadcast tx.
+   * Auth required.
+   */
+  async confirmObjectiveRegistry(
+    objectiveId: string,
+    transactionHash: string
+  ): Promise<{ record: ObjectiveRegistryRecord }> {
+    assertId(objectiveId, "objective id");
+    const hash = transactionHash.trim();
+    if (!hash) {
+      throw new AureonValidationError("transactionHash is required");
+    }
+    return requestJson(this.transport, registryConfirmPath(objectiveId), {
+      method: "POST",
+      body: { transactionHash: hash },
+    });
   }
 
   /** Returns the vault overview for the authenticated wallet. Auth required. */
