@@ -17,7 +17,8 @@ export type TimelineEventType =
   | "capital_provisioned"
   | "capital_cleared"
   | "capital_synced"
-  | "registry_anchored";
+  | "registry_registered"
+  | "settlement_recorded";
 
 export interface TimelineEvent {
   id: string;
@@ -43,7 +44,8 @@ export const TIMELINE_EVENT_TYPES: readonly TimelineEventType[] = [
   "capital_provisioned",
   "capital_cleared",
   "capital_synced",
-  "registry_anchored",
+  "registry_registered",
+  "settlement_recorded",
 ] as const;
 
 export function isTimelineEventType(value: string): value is TimelineEventType {
