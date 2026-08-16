@@ -7,6 +7,8 @@
  */
 
 import type { RegistryRef } from "./registry.js";
+import type { SettlementRecord } from "./settlement.js";
+import type { TimelineEvent } from "./timeline.js";
 
 export interface ExecutionReceipt {
   id: string;
@@ -22,8 +24,14 @@ export interface ExecutionReceipt {
    * `"vault"`: keeper rebalance confirmed (or pending_vault_* then confirmed).
    * `"staged"`: capital-book restore only (honest non-finality label).
    */
-  settlement?: "staged" | "vault";
+  settlement: "staged" | "vault";
+  /** Block explorer link when vault tx is a real `0x…` hash; null for staged. */
+  explorerUrl?: string | null;
   registryRef?: RegistryRef;
+  /** True when a settlement record exists for this execution (vault only). */
+  verifiedOnChain?: boolean;
+  /** Populated when verifiedOnChain is true. */
+  settlementRecord?: SettlementRecord;
 }
 
 /** Client-side restore action: wrap/unwrap ETH↔WETH or keeper vault swap. */
@@ -56,4 +64,44 @@ export function sortExecutionsNewestFirst(
 /** True when the receipt claims vault (on-chain) settlement. */
 export function isVaultSettlement(receipt: ExecutionReceipt): boolean {
   return receipt.settlement === "vault";
+}
+
+/** True when the receipt has independent on-chain settlement proof. */
+export function isChainVerifiedReceipt(receipt: ExecutionReceipt): boolean {
+  return receipt.verifiedOnChain === true;
+}
+
+/** Human-readable one-line receipt summary for agents and logs. */
+export function formatReceiptSummary(receipt: ExecutionReceipt): string {
+  const settlementLabel =
+    receipt.verifiedOnChain
+      ? "vault settlement (chain-verified)"
+      : receipt.settlement === "vault"
+        ? "vault settlement (unverified on-chain)"
+        : "staged settlement (capital book)";
+  const parts = [receipt.action, settlementLabel, receipt.status];
+  if (receipt.explorerUrl) parts.push(receipt.explorerUrl);
+  if (receipt.registryRef) {
+    parts.push(
+      `registry ${shortTransactionHash(receipt.registryRef.objectiveKey, 8, 4)}`
+    );
+  }
+  return parts.join(" · ");
+}
+
+/** Timeline events linked to a receipt via payload.executionId. */
+export function findTimelineEventsForReceipt(
+  events: TimelineEvent[],
+  receipt: ExecutionReceipt
+): TimelineEvent[] {
+  return events.filter((event) => {
+    if (
+      event.type !== "execution_started" &&
+      event.type !== "execution_completed"
+    ) {
+      return false;
+    }
+    const executionId = event.payload?.executionId;
+    return typeof executionId === "string" && executionId === receipt.id;
+  });
 }
