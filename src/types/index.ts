@@ -36,6 +36,13 @@ export {
   isTimelineEventType,
 } from "./timeline.js";
 
+export type {
+  SettlementRecord,
+  SettlementStatus,
+  ExecutionSettlementLookup,
+} from "./settlement.js";
+export { formatSettlementSummary } from "./settlement.js";
+
 export type { ExecutionReceipt, RestorePlan, RestorePlanKind } from "./execution.js";
 export type {
   RegistryStatus,
@@ -47,8 +54,11 @@ export type {
 export {
   isConfirmedExecution,
   isVaultSettlement,
+  isChainVerifiedReceipt,
   shortTransactionHash,
   sortExecutionsNewestFirst,
+  formatReceiptSummary,
+  findTimelineEventsForReceipt,
 } from "./execution.js";
 
 export type {
