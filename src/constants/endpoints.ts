@@ -27,6 +27,7 @@ export const ENDPOINTS = {
   authMe: "/auth/me",
   developerApiKeys: "/developer/api-keys",
   registryStatus: "/registry/status",
+  settlements: "/settlements",
 } as const;
 
 export function objectivePath(id: string): string {
@@ -63,4 +64,12 @@ export function registryPreparePath(id: string): string {
 
 export function registryConfirmPath(id: string): string {
   return `${registryObjectivePath(id)}/confirm`;
+}
+
+export function executionSettlementPath(id: string): string {
+  return `/executions/${encodeURIComponent(id)}/settlement`;
+}
+
+export function executionConfirmSettlementPath(id: string): string {
+  return `/executions/${encodeURIComponent(id)}/confirm-settlement`;
 }
