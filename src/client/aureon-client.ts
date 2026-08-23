@@ -28,6 +28,8 @@ import {
   registryObjectivePath,
   registryPreparePath,
   registryConfirmPath,
+  executionSettlementPath,
+  executionConfirmSettlementPath,
 } from "../constants/endpoints.js";
 import { AureonValidationError } from "../errors/base.js";
 import {
@@ -44,6 +46,10 @@ import {
   resolveTimeoutMs,
 } from "../types/client-options.js";
 import type { ExecutionReceipt, RestorePlan } from "../types/execution.js";
+import type {
+  ExecutionSettlementLookup,
+  SettlementRecord,
+} from "../types/settlement.js";
 import type {
   ObjectiveRegistryLookup,
   ObjectiveRegistryRecord,
@@ -449,6 +455,41 @@ export class AureonClient {
       path
     );
     return result.executions;
+  }
+
+  /** Returns chain-verified settlement record for an execution when present. Auth required. */
+  async getExecutionSettlement(executionId: string): Promise<ExecutionSettlementLookup> {
+    assertId(executionId, "execution id");
+    return requestJson(this.transport, executionSettlementPath(executionId));
+  }
+
+  /** Lists chain-verified settlement records for the authenticated wallet. Auth required. */
+  async listSettlements(objectiveId?: string): Promise<SettlementRecord[]> {
+    const path = withQuery(ENDPOINTS.settlements, { objectiveId });
+    const result = await requestJson<{ settlements: SettlementRecord[] }>(
+      this.transport,
+      path
+    );
+    return result.settlements;
+  }
+
+  /**
+   * Manual backfill: verify a vault tx on-chain and attach settlement proof.
+   * Auth required.
+   */
+  async confirmExecutionSettlement(
+    executionId: string,
+    transactionHash: string
+  ): Promise<{ settlement: SettlementRecord }> {
+    assertId(executionId, "execution id");
+    const hash = transactionHash.trim();
+    if (!hash) {
+      throw new AureonValidationError("transactionHash is required");
+    }
+    return requestJson(this.transport, executionConfirmSettlementPath(executionId), {
+      method: "POST",
+      body: { transactionHash: hash },
+    });
   }
 
   /** Returns Phase 2 ObjectiveRegistry deployment status. Auth required. */
