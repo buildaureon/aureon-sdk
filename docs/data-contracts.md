@@ -402,13 +402,83 @@ export interface ExecutionReceipt {
   result: string;
   createdAt: string;
   confirmedAt: string | null;
-  /** 
-   * vault represents keeper rebalances on the Robinhood Chain.
-   * staged represents simulated/book-only ledger updates.
-   */
-  settlement?: "staged" | "vault";
+  /** Required. vault = on-chain keeper path; staged = capital-book update only. */
+  settlement: "staged" | "vault";
+  /** Block explorer link when vault tx is confirmed (`0x…`); null for staged. */
+  explorerUrl?: string | null;
+  /** Present when the objective is registered on ObjectiveRegistry. */
+  registryRef?: RegistryRef;
+  /** True when a settlement record exists for this execution (vault only). */
+  verifiedOnChain?: boolean;
+  /** Populated when `verifiedOnChain` is true. */
+  settlementRecord?: SettlementRecord;
 }
 ```
+
+### SettlementRecord (Day 8)
+
+Independent on-chain proof from AureonVault `Rebalanced` events:
+
+```ts
+export interface SettlementRecord {
+  id: string;
+  executionId: string | null;
+  objectiveId: string | null;
+  walletAddress: string;
+  settlement: "vault";
+  transactionHash: string;
+  blockNumber: number;
+  logIndex: number;
+  vaultAddress: string;
+  tokenSell: string;
+  tokenBuy: string;
+  amountIn: string;
+  amountOut: string;
+  explorerUrl: string;
+  verifiedAt: string;
+  status: "confirmed" | "orphan";
+  registryRef?: RegistryRef;
+}
+```
+
+Client methods: `getExecutionSettlement`, `listSettlements`, `confirmExecutionSettlement`.
+
+---
+
+## 6.1 Receipt validation (Day 9)
+
+Validate receipts locally before trusting them in automation:
+
+```ts
+import {
+  validateExecutionReceipt,
+  assertValidExecutionReceipt,
+} from "@buildaureon/sdk";
+
+const result = validateExecutionReceipt(receipt);
+if (!result.valid) {
+  console.error(result.issues);
+}
+
+assertValidExecutionReceipt(receipt); // throws AureonValidationError
+```
+
+`ReceiptValidationResult`:
+
+```ts
+export type ReceiptValidationIssue = {
+  code: string;
+  message: string;
+  path?: string;
+};
+
+export type ReceiptValidationResult = {
+  valid: boolean;
+  issues: ReceiptValidationIssue[];
+};
+```
+
+Enforces required fields, `vault` vs `staged` honesty, explorer rules, and `verifiedOnChain` / `settlementRecord` consistency. See [receipt-validation.md](./receipt-validation.md).
 
 #### JSON Representation Example
 ```json
@@ -422,7 +492,12 @@ export interface ExecutionReceipt {
   "result": "Exchanged stock tokens for 3750.0 USDG on Robinhood Chain",
   "createdAt": "2026-07-15T22:46:00.000Z",
   "confirmedAt": "2026-07-15T22:46:05.000Z",
-  "settlement": "vault"
+  "settlement": "vault",
+  "explorerUrl": "https://explorer.testnet.chain.robinhood.com/tx/0xe295c2763f0d4681a8b54dfd38a0f8bfd21051515fcd9185a494ff3c8a99478f",
+  "registryRef": {
+    "objectiveKey": "0xabc…",
+    "contractAddress": "0x76d8f088d2abba3c73ff93f92308f8b59b250ea5"
+  }
 }
 ```
 
