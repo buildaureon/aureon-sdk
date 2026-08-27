@@ -9,3 +9,10 @@ export {
   formatWeight,
   healthTone,
 } from "./display.js";
+
+export {
+  buildAllocationComparison,
+  detectPlanParadox,
+  type AllocationComparisonRow,
+  type PlanParadoxResult,
+} from "./allocation.js";
