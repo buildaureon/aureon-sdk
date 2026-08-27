@@ -37,6 +37,8 @@ async function main(): Promise<void> {
     description: "Controlled mark appreciation on NVIDIA Stock Token",
     symbol: "NVDA",
     priceChangeRatio: 0.45,
+    // autoRestore: true runs restorative execution when objectives breach —
+    // use autoRestore: false for the green-vs-plan paradox demo (see example:green-vs-plan).
     autoRestore: true,
   });
 
