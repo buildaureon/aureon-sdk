@@ -33,6 +33,12 @@ import {
 } from "../constants/endpoints.js";
 import { AureonValidationError } from "../errors/base.js";
 import {
+  buildAllocationComparison,
+  detectPlanParadox,
+  type AllocationComparisonRow,
+  type PlanParadoxResult,
+} from "../formatting/allocation.js";
+import {
   assertBaseUrl,
   requestJson,
   withQuery,
@@ -380,6 +386,26 @@ export class AureonClient {
   /** Returns dashboard overview aggregates. Auth required. */
   async getOverview(): Promise<DashboardOverview> {
     return requestJson(this.transport, ENDPOINTS.overview);
+  }
+
+  /**
+   * Objective vs actual portfolio — joins objectives, health, and overview
+   * into comparison rows plus a green-book/off-plan paradox flag.
+   * Auth required.
+   */
+  async getAllocationVsTarget(): Promise<{
+    rows: AllocationComparisonRow[];
+    paradox: PlanParadoxResult;
+    overview: DashboardOverview;
+  }> {
+    const [overview, objectives, health] = await Promise.all([
+      this.getOverview(),
+      this.listObjectives(),
+      this.getHealth(),
+    ]);
+    const rows = buildAllocationComparison(objectives, health);
+    const paradox = detectPlanParadox(overview, health);
+    return { rows, paradox, overview };
   }
 
   /**
