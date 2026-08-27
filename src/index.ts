@@ -52,6 +52,10 @@ export {
   healthTone,
   formatSignedPercent,
   formatIsoTime,
+  buildAllocationComparison,
+  detectPlanParadox,
+  type AllocationComparisonRow,
+  type PlanParadoxResult,
 } from "./formatting/index.js";
 
 export type {
