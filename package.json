@@ -29,6 +29,7 @@
     "bench": "tsx benchmarks/client-throughput.ts",
     "example:quickstart": "tsx examples/quickstart/main.ts",
     "example:market": "tsx examples/market-event/main.ts",
+    "example:green-vs-plan": "tsx examples/green-vs-plan/main.ts",
     "example:sdk-demo-terminal": "tsx examples/sdk-demo-terminal/main.ts",
     "example:e2e": "tsx examples/e2e-vault-flow/main.ts",
     "example:e2e-policy": "tsx examples/e2e-policy-rebalance/main.ts",
