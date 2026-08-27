@@ -163,6 +163,31 @@ Start with one Automatic `balanced_portfolio` objective and a funded vault befor
 
 ---
 
+## 2b. Green vs plan paradox demo (Update 2)
+
+Most dashboards celebrate green PnL. AUREON separates book performance from plan adherence:
+
+```ts
+// Baseline
+const before = await aureon.getAllocationVsTarget();
+console.log(before.rows); // current vs target per objective
+
+// Controlled shock — keep violation visible
+await aureon.applyMarketEvent({
+  symbol: "NVDA",
+  priceChangeRatio: 0.45,
+  autoRestore: false,
+});
+
+const after = await aureon.getAllocationVsTarget();
+console.log(after.paradox.message);
+// "Book is up (5.0%), but 1 objective is off-plan."
+```
+
+Run the full script: `pnpm example:green-vs-plan` (requires `AUREON_API_KEY`).
+
+---
+
 ## 3. Daemon runners
 
 ### PM2
