@@ -365,6 +365,25 @@ async getOverview(): Promise<DashboardOverview>
 | HTTP | `GET /overview` |
 | Contains | Health counts, global score, 24h portfolio change (daily snapshots), evaluation schedule, recent executions + events |
 
+### `getAllocationVsTarget()`
+
+```ts
+async getAllocationVsTarget(): Promise<{
+  rows: AllocationComparisonRow[];
+  paradox: PlanParadoxResult;
+  overview: DashboardOverview;
+}>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — parallel `GET /overview`, `GET /objectives`, `GET /health` |
+| Returns | Per-objective current vs target weights plus a green-book/off-plan paradox flag |
+| Use | Update 2 demo — objective vs actual portfolio without stitching JSON yourself |
+
+Helpers `buildAllocationComparison()` and `detectPlanParadox()` are exported for custom integrators. See `pnpm example:green-vs-plan`.
+
 ---
 
 ## 6. Vault
@@ -578,6 +597,7 @@ session.clear();
 | `syncPortfolio` | POST | `/portfolio/sync` | **yes** |
 | `refreshWatchdog` | POST | `/watchdog/refresh` | **yes** |
 | `getOverview` | GET | `/overview` | **yes** |
+| `getAllocationVsTarget` | composite | overview + objectives + health | **yes** |
 | `listMarketPresets` | GET | `/market/presets` | **yes** |
 | `applyMarketEvent` | POST | `/market/events` | **yes** |
 | `getRestorePlan` | GET | `/objectives/:id/restore-plan` | **yes** |
