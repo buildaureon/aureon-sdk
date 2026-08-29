@@ -384,6 +384,153 @@ async getAllocationVsTarget(): Promise<{
 
 Helpers `buildAllocationComparison()` and `detectPlanParadox()` are exported for custom integrators. See `pnpm example:green-vs-plan`.
 
+### `applyFinancialIntent(intent)`
+
+```ts
+async applyFinancialIntent(intent: FinancialIntent): Promise<ObjectivePortfolioFlow>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — `POST /objectives` + watchdog refresh + `GET /health` + `GET /portfolio` |
+| Returns | Intent summary, created objective, health, portfolio snapshot, teaching message |
+| Use | Update 3 — AI → objective → portfolio in one call |
+
+### `getObjectivePortfolioFlow(objectiveId?)`
+
+```ts
+async getObjectivePortfolioFlow(objectiveId?: string): Promise<ObjectivePortfolioFlow[]>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — objectives + health + portfolio |
+| Returns | Flow snapshots for active objectives (or one id) |
+
+Helpers `parseFinancialIntent()`, `resolveObjectiveFromIntent()`, and `buildObjectivePortfolioFlow()` are exported. See `pnpm example:ai-to-objective-to-portfolio`.
+
+### `runDriftRestoreDemo()`
+
+```ts
+async runDriftRestoreDemo(): Promise<DriftRestoreFlow>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — portfolio seed, objective create, market event (`autoRestore: false`), restore plan, manual restore |
+| Returns | Three-beat `DriftRestoreFlow` — aligned → drift → restored |
+| Use | Update 4 — drift → detection → restore teaching demo |
+
+### `getDriftRestoreFlow(objectiveId?)`
+
+```ts
+async getDriftRestoreFlow(objectiveId?: string): Promise<DriftRestoreFlow[]>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — objectives + health + allocation + executions (+ restore plan when off-plan) |
+| Returns | Inferred drift-restore flows for active objectives |
+
+Helpers `buildDriftRestoreFlow()`, `buildDriftRestoreFlowFromSnapshot()`, and `inferDriftPhase()` are exported. See `pnpm example:drift-detect-restore`.
+
+### `runReceiptVerificationDemo()`
+
+```ts
+async runReceiptVerificationDemo(): Promise<ReceiptVerificationFlow>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — `runDriftRestoreDemo()` + local validation + settlement lookup + timeline |
+| Returns | Three-beat `ReceiptVerificationFlow` — claim → validate → verify |
+| Use | Update 5 — receipt → verification teaching demo |
+
+### `getReceiptVerificationFlow(executionId?)`
+
+```ts
+async getReceiptVerificationFlow(executionId?: string): Promise<ReceiptVerificationFlow[]>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — executions + validation + settlement + timeline |
+| Returns | Verification flows for recent or specified execution(s) |
+
+Helpers `buildReceiptVerificationFlow()`, `inferProofTier()`, and `validateExecutionReceipt()` are exported. See `pnpm example:receipt-verification`.
+
+### `runPortfolioWatchDemo(input?)`
+
+```ts
+async runPortfolioWatchDemo(input?: {
+  brief?: string;
+  host?: "cursor" | "claude" | "mcp";
+}): Promise<PortfolioWatchFlow>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — `applyFinancialIntent` + market event (`autoRestore: true`) + timeline |
+| Returns | Portfolio watch flow — register → while away → return briefing |
+| Use | Update 6 — agent-in-host demo |
+
+### `getPortfolioWatchFlow(input?)`
+
+```ts
+async getPortfolioWatchFlow(input?: {
+  objectiveId?: string;
+  brief?: string;
+  host?: "cursor" | "claude" | "mcp";
+}): Promise<PortfolioWatchFlow[]>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — Automatic objectives + health + allocation + timeline |
+| Returns | Read-only briefing for active Automatic objectives |
+
+Helpers `buildPortfolioWatchFlow()`, `DEFAULT_PORTFOLIO_WATCH_BRIEF`, and `inferPortfolioWatchPhase()` are exported. See `pnpm example:portfolio-watch`.
+
+### `runFullAureonLoopDemo(input?)`
+
+```ts
+async runFullAureonLoopDemo(input?: {
+  brief?: string;
+}): Promise<FullAureonLoopFlow>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — intent + allocation paradox + restore (`autoRestore: false`) + receipt verification |
+| Returns | Full loop — intent → plan check → restore → verify |
+| Use | Content Arc Update 7 — full AUREON loop positioning demo |
+
+### `getFullAureonLoopFlow(input?)`
+
+```ts
+async getFullAureonLoopFlow(input?: {
+  objectiveId?: string;
+  brief?: string;
+}): Promise<FullAureonLoopFlow[]>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | Composite — objectives + allocation + latest receipt + validation |
+| Returns | Read-only full-loop flows for active objectives with receipts |
+
+Helpers `buildFullAureonLoopFlow()`, `DEFAULT_FULL_LOOP_BRIEF`, and `inferFullAureonLoopPhase()` are exported. See `pnpm example:full-aureon-loop`.
+
 ---
 
 ## 6. Vault
@@ -598,6 +745,16 @@ session.clear();
 | `refreshWatchdog` | POST | `/watchdog/refresh` | **yes** |
 | `getOverview` | GET | `/overview` | **yes** |
 | `getAllocationVsTarget` | composite | overview + objectives + health | **yes** |
+| `applyFinancialIntent` | composite | create objective + health + portfolio | **yes** |
+| `getObjectivePortfolioFlow` | composite | objectives + health + portfolio | **yes** |
+| `runDriftRestoreDemo` | composite | seed + drift + manual restore | **yes** |
+| `getDriftRestoreFlow` | composite | objectives + health + allocation + executions | **yes** |
+| `runReceiptVerificationDemo` | composite | drift-restore + validate + settlement | **yes** |
+| `getReceiptVerificationFlow` | composite | executions + validation + settlement | **yes** |
+| `runPortfolioWatchDemo` | composite | intent + auto-restore market event + briefing | **yes** |
+| `getPortfolioWatchFlow` | composite | Automatic objectives + health + timeline | **yes** |
+| `runFullAureonLoopDemo` | composite | intent + plan paradox + restore + verify | **yes** |
+| `getFullAureonLoopFlow` | composite | objectives + allocation + receipt validation | **yes** |
 | `listMarketPresets` | GET | `/market/presets` | **yes** |
 | `applyMarketEvent` | POST | `/market/events` | **yes** |
 | `getRestorePlan` | GET | `/objectives/:id/restore-plan` | **yes** |
