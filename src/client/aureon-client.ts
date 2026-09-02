@@ -39,6 +39,38 @@ import {
   type PlanParadoxResult,
 } from "../formatting/allocation.js";
 import {
+  buildDriftRestoreFlow,
+  buildDriftRestoreFlowFromSnapshot,
+  type DriftRestoreFlow,
+} from "../formatting/drift-restore.js";
+import {
+  buildReceiptVerificationFlow,
+  type ReceiptVerificationFlow,
+} from "../formatting/receipt-verification.js";
+import {
+  buildPortfolioWatchFlow,
+  buildPortfolioWatchFlowFromSnapshot,
+  DEFAULT_PORTFOLIO_WATCH_BRIEF,
+  type AgentHost,
+  type PortfolioWatchFlow,
+} from "../formatting/portfolio-watch.js";
+import {
+  buildFullAureonLoopFlow,
+  buildFullAureonLoopFlowFromSnapshot,
+  DEFAULT_FULL_LOOP_BRIEF,
+  type FullAureonLoopFlow,
+} from "../formatting/full-aureon-loop.js";
+import {
+  buildFinancialAuditTrail,
+  type FinancialAuditTrail,
+} from "../formatting/audit-trail.js";
+import {
+  buildObjectivePortfolioFlow,
+  resolveObjectiveFromIntent,
+  type FinancialIntent,
+  type ObjectivePortfolioFlow,
+} from "../formatting/intent.js";
+import {
   assertBaseUrl,
   requestJson,
   withQuery,
@@ -52,6 +84,10 @@ import {
   resolveTimeoutMs,
 } from "../types/client-options.js";
 import type { ExecutionReceipt, RestorePlan } from "../types/execution.js";
+import {
+  findTimelineEventsForReceipt,
+  sortExecutionsNewestFirst,
+} from "../types/execution.js";
 import type {
   ExecutionSettlementLookup,
   SettlementRecord,
@@ -89,6 +125,39 @@ import {
   normalizeCreateObjectiveInput,
   normalizeUpdateObjectiveInput,
 } from "../validation/objective-input.js";
+import { validateExecutionReceipt } from "../validation/receipt-validator.js";
+
+/** Shared capital book for Update 2/3/4 content-arc demos (~20% stables). */
+const DEMO_DRIFT_RESTORE_POSITIONS: PortfolioPositionInput[] = [
+  {
+    symbol: "USDG",
+    name: "Paxos USDG",
+    category: "stable",
+    quantity: 24_000,
+    markPriceUsd: 1,
+  },
+  {
+    symbol: "NVDA",
+    name: "NVIDIA Stock Token",
+    category: "stock_token",
+    quantity: 45,
+    markPriceUsd: 920,
+  },
+  {
+    symbol: "AAPL",
+    name: "Apple Stock Token",
+    category: "stock_token",
+    quantity: 80,
+    markPriceUsd: 210,
+  },
+  {
+    symbol: "ETH",
+    name: "Ether",
+    category: "gas",
+    quantity: 8.5,
+    markPriceUsd: 3400,
+  },
+];
 
 export interface AuthNonceResponse {
   walletAddress: string;
@@ -409,6 +478,536 @@ export class AureonClient {
   }
 
   /**
+   * Registers agent/user intent as an Automatic objective and returns the
+   * AI → objective → portfolio flow snapshot.
+   * Auth required.
+   */
+  async applyFinancialIntent(
+    intent: FinancialIntent
+  ): Promise<ObjectivePortfolioFlow> {
+    const objective = await this.createObjective(
+      resolveObjectiveFromIntent(intent)
+    );
+    try {
+      await this.refreshWatchdog();
+    } catch {
+      // Watchdog may be unavailable in some environments; health still loads below.
+    }
+    const [healthRecords, portfolio] = await Promise.all([
+      this.getHealth(objective.id),
+      this.getPortfolio(),
+    ]);
+    return buildObjectivePortfolioFlow(
+      intent,
+      objective,
+      healthRecords[0] ?? null,
+      portfolio
+    );
+  }
+
+  /**
+   * Read-only AI → objective → portfolio flow for existing objectives.
+   * Auth required.
+   */
+  async getObjectivePortfolioFlow(
+    objectiveId?: string
+  ): Promise<ObjectivePortfolioFlow[]> {
+    const [objectives, healthRecords, portfolio] = await Promise.all([
+      objectiveId
+        ? [await this.getObjective(objectiveId)]
+        : this.listObjectives(),
+      this.getHealth(objectiveId),
+      this.getPortfolio(),
+    ]);
+
+    const active = objectives.filter(
+      (o) => o.status === "active" || o.status === "validated"
+    );
+    const healthById = new Map(healthRecords.map((h) => [h.objectiveId, h]));
+
+    return active.map((objective) => {
+      const health = healthById.get(objective.id) ?? null;
+      const intent: FinancialIntent = {
+        brief: objective.name,
+        kind: objective.kind,
+        targetWeight: objective.policy?.targetWeight ?? 0,
+        tolerance: objective.policy?.tolerance ?? 0.02,
+        targetSymbol: objective.policy?.targetSymbol,
+        name: objective.name,
+        priority: objective.priority,
+      };
+      return buildObjectivePortfolioFlow(
+        intent,
+        objective,
+        health,
+        portfolio
+      );
+    });
+  }
+
+  /**
+   * Controlled drift → detection → restore demo (Update 4).
+   * Seeds book, creates stable objective, applies NVDA rally with auto-restore
+   * disabled, then runs manual restore and returns the three-beat flow.
+   * Auth required.
+   */
+  async runDriftRestoreDemo(): Promise<DriftRestoreFlow> {
+    await this.setPortfolio(DEMO_DRIFT_RESTORE_POSITIONS);
+
+    const objective = await this.createObjective({
+      name: "Maintain 20% Stable Assets",
+      kind: "stable_allocation",
+      targetWeight: 0.2,
+      tolerance: 0.02,
+    });
+
+    try {
+      await this.refreshWatchdog();
+    } catch {
+      // Watchdog may be unavailable; baseline health still loads below.
+    }
+
+    const [alignedHealthRecords, baselineRows] = await Promise.all([
+      this.getHealth(objective.id),
+      this.getAllocationVsTarget(),
+    ]);
+    const alignedHealth = alignedHealthRecords[0];
+    if (!alignedHealth) {
+      throw new AureonValidationError(
+        "Baseline health missing after objective create"
+      );
+    }
+    const alignedRow = baselineRows.rows.find(
+      (r) => r.objectiveId === objective.id
+    );
+
+    await this.applyMarketEvent({
+      name: "NVDA Stock Token Rally",
+      description: "Controlled mark move — Update 4 drift demo",
+      symbol: "NVDA",
+      priceChangeRatio: 0.45,
+      autoRestore: false,
+    });
+
+    const [driftHealthRecords, driftRows, restorePlan] = await Promise.all([
+      this.getHealth(objective.id),
+      this.getAllocationVsTarget(),
+      this.getRestorePlan(objective.id),
+    ]);
+    const driftHealth = driftHealthRecords[0];
+    if (!driftHealth) {
+      throw new AureonValidationError("Drift health missing after market event");
+    }
+    const driftRow = driftRows.rows.find((r) => r.objectiveId === objective.id);
+
+    const receipt = await this.restoreObjective(objective.id);
+
+    const [restoredHealthRecords] = await Promise.all([
+      this.getHealth(objective.id),
+    ]);
+    const restoredHealth = restoredHealthRecords[0];
+
+    return buildDriftRestoreFlow({
+      objective,
+      alignedHealth,
+      driftHealth,
+      driftPlan: restorePlan,
+      restoredHealth: restoredHealth ?? driftHealth,
+      receipt,
+      alignedRow,
+      driftRow,
+    });
+  }
+
+  /**
+   * Read-only drift → detection → restore flow for active objectives.
+   * Auth required.
+   */
+  async getDriftRestoreFlow(objectiveId?: string): Promise<DriftRestoreFlow[]> {
+    const [objectives, healthRecords, allocation, executions] = await Promise.all([
+      objectiveId
+        ? [await this.getObjective(objectiveId)]
+        : this.listObjectives(),
+      this.getHealth(objectiveId),
+      this.getAllocationVsTarget(),
+      this.listExecutions(objectiveId),
+    ]);
+
+    const active = objectives.filter(
+      (o) => o.status === "active" || o.status === "validated"
+    );
+    const healthById = new Map(healthRecords.map((h) => [h.objectiveId, h]));
+    const rowById = new Map(
+      allocation.rows.map((r) => [r.objectiveId, r])
+    );
+    const receiptsByObjective = new Map<string, ExecutionReceipt>();
+    for (const receipt of sortExecutionsNewestFirst(executions)) {
+      if (!receiptsByObjective.has(receipt.objectiveId)) {
+        receiptsByObjective.set(receipt.objectiveId, receipt);
+      }
+    }
+
+    const flows: DriftRestoreFlow[] = [];
+    for (const objective of active) {
+      const health = healthById.get(objective.id);
+      if (!health) continue;
+
+      let restorePlan: RestorePlan | undefined;
+      if (health.state === "warning" || health.state === "violation") {
+        try {
+          restorePlan = await this.getRestorePlan(objective.id);
+        } catch {
+          // Plan unavailable when restore path is blocked.
+        }
+      }
+
+      flows.push(
+        buildDriftRestoreFlowFromSnapshot({
+          objective,
+          health,
+          allocationRow: rowById.get(objective.id),
+          restorePlan,
+          latestReceipt: receiptsByObjective.get(objective.id),
+        })
+      );
+    }
+
+    return flows;
+  }
+
+  private async buildReceiptVerificationFlowForReceipt(
+    receipt: ExecutionReceipt,
+    timelineEvents?: TimelineEvent[]
+  ): Promise<ReceiptVerificationFlow> {
+    const validation = validateExecutionReceipt(receipt);
+
+    let settlement: ExecutionSettlementLookup | undefined;
+    if (receipt.settlement === "vault") {
+      try {
+        settlement = await this.getExecutionSettlement(receipt.id);
+      } catch {
+        // Settlement lookup unavailable — flow still reports validation tier.
+      }
+    }
+
+    const events =
+      timelineEvents ??
+      findTimelineEventsForReceipt(
+        await this.getTimeline(receipt.objectiveId),
+        receipt
+      );
+
+    return buildReceiptVerificationFlow({
+      receipt,
+      validation,
+      settlement,
+      timelineEvents: events,
+    });
+  }
+
+  /**
+   * Controlled receipt → verification demo (Update 5).
+   * Runs drift-restore (Update 4), then validates receipt and looks up settlement.
+   * Auth required.
+   */
+  async runReceiptVerificationDemo(): Promise<ReceiptVerificationFlow> {
+    const driftFlow = await this.runDriftRestoreDemo();
+    const receipt = driftFlow.phases.restored?.receipt;
+    if (!receipt) {
+      throw new AureonValidationError(
+        "Restore receipt missing after drift-restore demo"
+      );
+    }
+    return this.buildReceiptVerificationFlowForReceipt(receipt);
+  }
+
+  /**
+   * Read-only receipt → verification flow for execution receipts.
+   * Auth required.
+   */
+  async getReceiptVerificationFlow(
+    executionId?: string
+  ): Promise<ReceiptVerificationFlow[]> {
+    const executions = sortExecutionsNewestFirst(await this.listExecutions());
+    const targets = executionId
+      ? executions.filter((e) => e.id === executionId)
+      : executions.slice(0, 5);
+
+    if (targets.length === 0) {
+      return [];
+    }
+
+    const timeline = await this.getTimeline();
+    const flows: ReceiptVerificationFlow[] = [];
+    for (const receipt of targets) {
+      flows.push(
+        await this.buildReceiptVerificationFlowForReceipt(
+          receipt,
+          findTimelineEventsForReceipt(timeline, receipt)
+        )
+      );
+    }
+    return flows;
+  }
+
+  /**
+   * Controlled portfolio watch demo (Update 6).
+   * User brief → Automatic objective → market move while away → auto restore → return briefing.
+   * Auth required.
+   */
+  async runPortfolioWatchDemo(input?: {
+    brief?: string;
+    host?: AgentHost;
+  }): Promise<PortfolioWatchFlow> {
+    const userBrief = input?.brief?.trim() || DEFAULT_PORTFOLIO_WATCH_BRIEF;
+    const host = input?.host ?? "cursor";
+
+    await this.setPortfolio(DEMO_DRIFT_RESTORE_POSITIONS);
+
+    const intent: FinancialIntent = {
+      brief: userBrief,
+      kind: "stable_allocation",
+      targetWeight: 0.2,
+      tolerance: 0.02,
+    };
+
+    const setup = await this.applyFinancialIntent(intent);
+    const objective = setup.objective;
+    const registerHealth = setup.health;
+    if (!registerHealth) {
+      throw new AureonValidationError(
+        "Register health missing after applyFinancialIntent"
+      );
+    }
+
+    const baselineRows = await this.getAllocationVsTarget();
+    const registerRow = baselineRows.rows.find(
+      (r) => r.objectiveId === objective.id
+    );
+
+    const healthBeforeRecords = await this.getHealth(objective.id);
+    const healthBefore = healthBeforeRecords[0];
+    if (!healthBefore) {
+      throw new AureonValidationError("Baseline health missing before market event");
+    }
+
+    const marketResult = await this.applyMarketEvent({
+      name: "NVDA rally while you were away",
+      description: "Update 6 portfolio watch demo — auto restore on",
+      symbol: "NVDA",
+      priceChangeRatio: 0.45,
+      autoRestore: true,
+    });
+
+    const healthAfter =
+      marketResult.health.find((h) => h.objectiveId === objective.id) ??
+      healthBefore;
+    const receipt = marketResult.executions.find(
+      (e) => e.objectiveId === objective.id
+    );
+
+    const timeline = await this.getTimeline(objective.id);
+
+    return buildPortfolioWatchFlow({
+      userBrief,
+      host,
+      objective,
+      registerHealth,
+      registerRow,
+      whileAway: {
+        marketEvent: marketResult.event,
+        healthBefore,
+        healthAfter,
+        autoRestored: marketResult.executions.length > 0,
+        receipt,
+      },
+      briefingHealth: healthAfter,
+      timelineEvents: timeline.slice(0, 10),
+    });
+  }
+
+  /**
+   * Read-only portfolio watch briefing for Automatic objectives.
+   * Auth required.
+   */
+  async getPortfolioWatchFlow(input?: {
+    objectiveId?: string;
+    brief?: string;
+    host?: AgentHost;
+  }): Promise<PortfolioWatchFlow[]> {
+    const userBrief =
+      input?.brief?.trim() || DEFAULT_PORTFOLIO_WATCH_BRIEF;
+    const host = input?.host ?? "mcp";
+
+    const [objectives, healthRecords, allocation, timeline] =
+      await Promise.all([
+        input?.objectiveId
+          ? [await this.getObjective(input.objectiveId)]
+          : this.listObjectives(),
+        this.getHealth(input?.objectiveId),
+        this.getAllocationVsTarget(),
+        this.getTimeline(input?.objectiveId),
+      ]);
+
+    const active = objectives.filter(
+      (o) =>
+        (o.status === "active" || o.status === "validated") &&
+        (o.automationMode ?? "auto") === "auto"
+    );
+    const healthById = new Map(healthRecords.map((h) => [h.objectiveId, h]));
+    const rowById = new Map(allocation.rows.map((r) => [r.objectiveId, r]));
+
+    const flows: PortfolioWatchFlow[] = [];
+    for (const objective of active) {
+      const health = healthById.get(objective.id);
+      if (!health) continue;
+
+      const objectiveTimeline = timeline.filter(
+        (e) => !e.objectiveId || e.objectiveId === objective.id
+      );
+
+      flows.push(
+        buildPortfolioWatchFlowFromSnapshot({
+          userBrief,
+          host,
+          objective,
+          health,
+          allocationRow: rowById.get(objective.id),
+          timelineEvents: objectiveTimeline.slice(0, 10),
+        })
+      );
+    }
+
+    return flows;
+  }
+
+  /**
+   * Controlled full AUREON loop demo (Content Arc Update 7).
+   * Intent → plan check (green vs plan with autoRestore false) → restore → receipt verification.
+   * Auth required.
+   */
+  async runFullAureonLoopDemo(input?: {
+    brief?: string;
+  }): Promise<FullAureonLoopFlow> {
+    const userBrief = input?.brief?.trim() || DEFAULT_FULL_LOOP_BRIEF;
+
+    await this.setPortfolio(DEMO_DRIFT_RESTORE_POSITIONS);
+
+    const intent: FinancialIntent = {
+      brief: userBrief,
+      kind: "stable_allocation",
+      targetWeight: 0.2,
+      tolerance: 0.02,
+    };
+
+    const setup = await this.applyFinancialIntent(intent);
+    const objective = setup.objective;
+    const baselineHealth = setup.health;
+    if (!baselineHealth) {
+      throw new AureonValidationError(
+        "Baseline health missing after applyFinancialIntent"
+      );
+    }
+
+    await this.applyMarketEvent({
+      name: "NVDA rally — green book, off-plan sleeve",
+      description: "Update 7 full loop — autoRestore false to expose plan paradox",
+      symbol: "NVDA",
+      priceChangeRatio: 0.45,
+      autoRestore: false,
+    });
+
+    const [afterShockHealthRecords, allocation] = await Promise.all([
+      this.getHealth(objective.id),
+      this.getAllocationVsTarget(),
+    ]);
+    const afterShockHealth = afterShockHealthRecords[0];
+    if (!afterShockHealth) {
+      throw new AureonValidationError("Health missing after market event");
+    }
+    const afterShockRow = allocation.rows.find(
+      (r) => r.objectiveId === objective.id
+    );
+
+    const receipt = await this.restoreObjective(objective.id);
+
+    const restoredHealthRecords = await this.getHealth(objective.id);
+    const restoredHealth = restoredHealthRecords[0] ?? afterShockHealth;
+
+    const verification =
+      await this.buildReceiptVerificationFlowForReceipt(receipt);
+
+    return buildFullAureonLoopFlow({
+      userBrief,
+      objective,
+      baselineHealth,
+      afterShockHealth,
+      afterShockRow,
+      paradox: allocation.paradox,
+      restoredHealth,
+      receipt,
+      verification,
+    });
+  }
+
+  /**
+   * Read-only full AUREON loop for active objectives with a latest receipt.
+   * Auth required.
+   */
+  async getFullAureonLoopFlow(input?: {
+    objectiveId?: string;
+    brief?: string;
+  }): Promise<FullAureonLoopFlow[]> {
+    const userBrief = input?.brief?.trim() || DEFAULT_FULL_LOOP_BRIEF;
+
+    const [objectives, healthRecords, allocation, executions] =
+      await Promise.all([
+        input?.objectiveId
+          ? [await this.getObjective(input.objectiveId)]
+          : this.listObjectives(),
+        this.getHealth(input?.objectiveId),
+        this.getAllocationVsTarget(),
+        this.listExecutions(input?.objectiveId),
+      ]);
+
+    const active = objectives.filter(
+      (o) => o.status === "active" || o.status === "validated"
+    );
+    const healthById = new Map(healthRecords.map((h) => [h.objectiveId, h]));
+    const rowById = new Map(allocation.rows.map((r) => [r.objectiveId, r]));
+    const receiptsByObjective = new Map<string, ExecutionReceipt>();
+    for (const receipt of sortExecutionsNewestFirst(executions)) {
+      if (!receiptsByObjective.has(receipt.objectiveId)) {
+        receiptsByObjective.set(receipt.objectiveId, receipt);
+      }
+    }
+
+    const flows: FullAureonLoopFlow[] = [];
+    for (const objective of active) {
+      const health = healthById.get(objective.id);
+      if (!health) continue;
+      const latestReceipt = receiptsByObjective.get(objective.id);
+      if (!latestReceipt) continue;
+
+      const verification =
+        await this.buildReceiptVerificationFlowForReceipt(latestReceipt);
+
+      const flow = buildFullAureonLoopFlowFromSnapshot({
+        userBrief,
+        objective,
+        health,
+        allocationRow: rowById.get(objective.id),
+        paradox: allocation.paradox,
+        latestReceipt,
+        verification,
+      });
+      if (flow) flows.push(flow);
+    }
+
+    return flows;
+  }
+
+  /**
    * Applies a controlled market event to portfolio marks.
    * When autoRestore is true, the API evaluates health and may run staged restorative execution.
    * Auth required.
@@ -656,6 +1255,41 @@ export class AureonClient {
     assertId(keyId, "api key id");
     return requestJson(this.transport, `${developerApiKeyPath(keyId)}/toggle`, {
       method: "POST",
+    });
+  }
+
+  /**
+   * Joins objective → registry → receipts → settlements → timeline.
+   * Missing proof is labeled as a gap. Nothing is invented. Auth required.
+   */
+  async getAuditTrail(objectiveId: string): Promise<FinancialAuditTrail> {
+    assertId(objectiveId, "objective id");
+    const [objective, healthRows, receipts, settlements, timeline] =
+      await Promise.all([
+        this.getObjective(objectiveId),
+        this.getHealth(objectiveId),
+        this.listExecutions(objectiveId),
+        this.listSettlements(objectiveId).catch(() => [] as SettlementRecord[]),
+        this.getTimeline(objectiveId),
+      ]);
+
+    let registry: Awaited<ReturnType<typeof this.getObjectiveRegistry>> = {
+      registered: false,
+      objectiveId,
+    };
+    try {
+      registry = await this.getObjectiveRegistry(objectiveId);
+    } catch {
+      // Registry lookup optional — trail still exports what exists.
+    }
+
+    return buildFinancialAuditTrail({
+      objective,
+      health: healthRows[0],
+      registry,
+      receipts: sortExecutionsNewestFirst(receipts),
+      settlements,
+      timeline,
     });
   }
 }
