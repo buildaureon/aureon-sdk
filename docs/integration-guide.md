@@ -188,7 +188,122 @@ Run the full script: `pnpm example:green-vs-plan` (requires `AUREON_API_KEY`).
 
 ---
 
-## 3. Daemon runners
+## 2c. AI → objective → portfolio (Update 3)
+
+Most AI agents can transact but forget what the user wanted. AUREON registers intent as a persistent objective, then reads the portfolio through that policy:
+
+```ts
+const flow = await aureon.applyFinancialIntent({
+  brief: "Keep about 20% of the portfolio in stable assets",
+  kind: "stable_allocation",
+  targetWeight: 0.2,
+  tolerance: 0.02,
+});
+
+console.log(flow.intent.policySummary);
+console.log(flow.objective.id);
+console.log(flow.health?.state);
+console.log(flow.message);
+```
+
+For demos, `parseFinancialIntent(brief)` converts a user sentence into structured fields (rule-based, not production NLU).
+
+Run the full script: `pnpm example:ai-to-objective-to-portfolio`.
+
+Then use `getAllocationVsTarget()` (Update 2) to compare objective vs actual over time.
+
+---
+
+## 2d. Drift → detection → restore (Update 4)
+
+Update 2 stops at the paradox — book up, plan off-target, no restore. Update 4 closes the loop:
+
+```ts
+const flow = await aureon.runDriftRestoreDemo();
+
+console.log(flow.rule.summary);
+console.log(flow.phases.aligned.health.state);
+console.log(flow.phases.drift.health.state);
+console.log(flow.phases.restored?.receipt?.settlement);
+console.log(flow.message);
+```
+
+For read-only monitoring without mutating the book, use `getDriftRestoreFlow()` — it joins objectives, health, allocation rows, restore plans (when off-plan), and the latest execution receipt.
+
+Run the full script: `pnpm example:drift-detect-restore`.
+
+---
+
+## 2e. Receipt → verification (Update 5)
+
+Update 4 returns a receipt after restore. Update 5 teaches that **"transaction successful" is a claim**, not proof:
+
+```ts
+const flow = await aureon.runReceiptVerificationDemo();
+
+console.log(flow.phases.claimed.result);
+console.log(flow.phases.validation.valid);
+console.log(flow.proofTier);
+console.log(flow.phases.settlement?.verifiedOnChain);
+console.log(flow.message);
+```
+
+Proof tiers: **claim_only** (validation failed) → **schema_valid** (honest receipt shape) → **chain_verified** (independent settlement record for vault).
+
+For read-only checks on existing executions, use `getReceiptVerificationFlow(executionId?)`.
+
+Run the full script: `pnpm example:receipt-verification`.
+
+Forward link: Update 6 — Claude/Cursor + AUREON agent-in-host demo.
+
+---
+
+## 2f. Portfolio watch while away (Update 6)
+
+Consumer hook: *“Imagine telling your AI: watch my portfolio while I'm away.”*
+
+```ts
+const flow = await aureon.runPortfolioWatchDemo({ host: "cursor" });
+
+console.log(flow.userBrief);
+console.log(flow.phases.register.automationMode);
+console.log(flow.phases.whileAway?.autoRestored);
+for (const line of flow.phases.briefing.summaryLines) {
+  console.log(line);
+}
+```
+
+Update 4 uses `autoRestore: false` (manual restore demo). Update 6 uses **`autoRestore: true`** — Automatic mode acts while the operator is away.
+
+For read-only briefing on existing Automatic objectives: `getPortfolioWatchFlow()`.
+
+Run the full script: `pnpm example:portfolio-watch`.
+
+Forward link: Update 7 — full AUREON loop.
+
+---
+
+## 2g. Full AUREON loop (Update 7)
+
+Positioning hook: *"We're not building another portfolio tracker."*
+
+```ts
+const flow = await aureon.runFullAureonLoopDemo();
+
+console.log(flow.phases.intent.policySummary);
+console.log(flow.phases.planCheck.afterShock.paradox.detected);
+console.log(flow.phases.driftRestore.settlement);
+console.log(flow.phases.verification.proofTier);
+console.log(flow.message);
+```
+
+One composite closes the content arc: **intent → plan check → restore → receipt verification**. A tracker stops at marks; AUREON registers policy, exposes green-vs-plan failure (`autoRestore: false`), restores, then validates the receipt.
+
+For read-only joins on existing objectives with receipts: `getFullAureonLoopFlow()`.
+
+Run the full script: `pnpm example:full-aureon-loop`.
+
+---
 
 ### PM2
 
