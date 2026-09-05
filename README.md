@@ -114,6 +114,8 @@ flowchart LR
 | Prepare non-custodial vault deposit / withdraw steps | `prepareVaultDeposit`, related vault helpers |
 | Fetch and execute restore plans | `getRestorePlan`, `restoreObjective` |
 | Apply controlled market events for integration rehearsal | `applyMarketEvent` |
+| Register agent intent as objective + portfolio flow | `applyFinancialIntent`, `getObjectivePortfolioFlow` |
+| Compare objective vs actual allocation | `getAllocationVsTarget` |
 | Manage developer API keys | `createApiKey`, `listApiKeys`, `toggleApiKey`, `revokeApiKey` |
 
 **This package alone does not:**
@@ -596,6 +598,19 @@ pnpm --filter @buildaureon/sdk cli me
 pnpm --filter @buildaureon/sdk cli sync
 pnpm --filter @buildaureon/sdk cli portfolio
 pnpm --filter @buildaureon/sdk cli objectives
+```
+
+### Runnable examples (live API)
+
+Requires `AUREON_API_KEY`:
+
+```bash
+pnpm example:ai-to-objective-to-portfolio  
+pnpm example:drift-detect-restore           
+pnpm example:receipt-verification          
+pnpm example:portfolio-watch               
+pnpm example:full-aureon-loop             
+pnpm example:green-vs-plan                  
 ```
 
 ---
