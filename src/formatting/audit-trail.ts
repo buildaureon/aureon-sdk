@@ -27,7 +27,8 @@ export type AuditTrailGapCode =
   | "staged_only"
   | "vault_unverified"
   | "invalid_receipt"
-  | "no_timeline";
+  | "no_timeline"
+  | "lookup_failed";
 
 export interface AuditTrailGap {
   code: AuditTrailGapCode;
@@ -77,6 +78,8 @@ export function buildFinancialAuditTrail(input: {
   settlements: SettlementRecord[];
   timeline: TimelineEvent[];
   generatedAt?: string;
+  registryLookupFailed?: boolean;
+  settlementsLookupFailed?: boolean;
 }): FinancialAuditTrail {
   const targetWeight = input.objective.policy?.targetWeight ?? 0;
   const tolerance = input.objective.policy?.tolerance ?? 0.02;
@@ -114,7 +117,17 @@ export function buildFinancialAuditTrail(input: {
   }));
 
   const gaps: AuditTrailGap[] = [];
-  if (!registered) {
+  if (input.registryLookupFailed || input.settlementsLookupFailed) {
+    const parts = [
+      input.registryLookupFailed ? "Registry lookup failed." : null,
+      input.settlementsLookupFailed ? "Settlement lookup failed." : null,
+    ].filter((part): part is string => Boolean(part));
+    gaps.push({
+      code: "lookup_failed",
+      message: `${parts.join(" ")} Do not treat this as a confirmed gap.`,
+    });
+  }
+  if (!registered && !input.registryLookupFailed) {
     gaps.push({
       code: "not_registered",
       message: "Objective is not registered on ObjectiveRegistry.",
@@ -148,7 +161,13 @@ export function buildFinancialAuditTrail(input: {
       });
     }
   }
-  if (input.settlements.length === 0) {
+  const everyReceiptStaged =
+    receipts.length > 0 && receipts.every((row) => row.settlement === "staged");
+  if (
+    input.settlements.length === 0 &&
+    !input.settlementsLookupFailed &&
+    !everyReceiptStaged
+  ) {
     gaps.push({
       code: "no_settlements",
       message: "No chain settlement records linked to this objective.",
