@@ -22,7 +22,7 @@ export function normalizeApplyMarketEventInput(
   return {
     ...input,
     symbol,
-    autoRestore: input.autoRestore !== false,
+    autoRestore: input.autoRestore === true,
     name: input.name?.trim() || undefined,
     description: input.description?.trim() || undefined,
   };
