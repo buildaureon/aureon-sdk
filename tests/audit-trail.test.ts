@@ -105,7 +105,10 @@ test("buildFinancialAuditTrail labels missing registry and staged-only receipts"
   assert.equal(trail.receipts[0]?.valid, true);
   assert.ok(trail.gaps.some((gap) => gap.code === "not_registered"));
   assert.ok(trail.gaps.some((gap) => gap.code === "staged_only"));
-  assert.ok(trail.gaps.some((gap) => gap.code === "no_settlements"));
+  assert.equal(
+    trail.gaps.some((gap) => gap.code === "no_settlements"),
+    false
+  );
   assert.match(trail.message, /without chain settlement/i);
 });
 
@@ -189,4 +192,25 @@ test("buildFinancialAuditTrail flags dishonest receipts", () => {
   assert.equal(trail.receipts[0]?.valid, false);
   assert.ok(trail.gaps.some((gap) => gap.code === "invalid_receipt"));
   assert.match(trail.message, /Do not treat success text as proof/);
+});
+
+test("buildFinancialAuditTrail labels lookup failures instead of invented gaps", () => {
+  const trail = buildFinancialAuditTrail({
+    objective,
+    receipts: [vaultReceipt],
+    settlements: [],
+    timeline,
+    registryLookupFailed: true,
+    settlementsLookupFailed: true,
+  });
+
+  assert.ok(trail.gaps.some((gap) => gap.code === "lookup_failed"));
+  assert.equal(
+    trail.gaps.some((gap) => gap.code === "not_registered"),
+    false
+  );
+  assert.equal(
+    trail.gaps.some((gap) => gap.code === "no_settlements"),
+    false
+  );
 });
