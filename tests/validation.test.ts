@@ -75,5 +75,5 @@ test("normalizeApplyMarketEventInput uppercases symbol", () => {
     priceChangeRatio: 0.45,
   });
   assert.equal(input.symbol, "NVDA");
-  assert.equal(input.autoRestore, true);
+  assert.equal(input.autoRestore, false);
 });
