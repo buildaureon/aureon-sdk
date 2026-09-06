@@ -127,7 +127,7 @@ import {
 } from "../validation/objective-input.js";
 import { validateExecutionReceipt } from "../validation/receipt-validator.js";
 
-/** Shared capital book for Update 2/3/4 content-arc demos (~20% stables). */
+/** Shared capital book for content-arc demos (~20% stables). */
 const DEMO_DRIFT_RESTORE_POSITIONS: PortfolioPositionInput[] = [
   {
     symbol: "USDG",
@@ -546,7 +546,7 @@ export class AureonClient {
   }
 
   /**
-   * Controlled drift → detection → restore demo (Update 4).
+   * Controlled drift → detection → restore demo
    * Seeds book, creates stable objective, applies NVDA rally with auto-restore
    * disabled, then runs manual restore and returns the three-beat flow.
    * Auth required.
@@ -583,7 +583,7 @@ export class AureonClient {
 
     await this.applyMarketEvent({
       name: "NVDA Stock Token Rally",
-      description: "Controlled mark move — Update 4 drift demo",
+      description: "Controlled mark move — drift demo",
       symbol: "NVDA",
       priceChangeRatio: 0.45,
       autoRestore: false,
@@ -706,8 +706,8 @@ export class AureonClient {
   }
 
   /**
-   * Controlled receipt → verification demo (Update 5).
-   * Runs drift-restore (Update 4), then validates receipt and looks up settlement.
+   * Controlled receipt → verification demo.
+   * Runs drift-restore, then validates receipt and looks up settlement.
    * Auth required.
    */
   async runReceiptVerificationDemo(): Promise<ReceiptVerificationFlow> {
@@ -751,7 +751,7 @@ export class AureonClient {
   }
 
   /**
-   * Controlled portfolio watch demo (Update 6).
+   * Controlled portfolio watch demo.
    * User brief → Automatic objective → market move while away → auto restore → return briefing.
    * Auth required.
    */
@@ -793,7 +793,7 @@ export class AureonClient {
 
     const marketResult = await this.applyMarketEvent({
       name: "NVDA rally while you were away",
-      description: "Update 6 portfolio watch demo — auto restore on",
+      description: "portfolio watch demo — auto restore on",
       symbol: "NVDA",
       priceChangeRatio: 0.45,
       autoRestore: true,
@@ -882,7 +882,7 @@ export class AureonClient {
   }
 
   /**
-   * Controlled full AUREON loop demo (Content Arc Update 7).
+   * Controlled full AUREON loop demo (Content Arc).
    * Intent → plan check (green vs plan with autoRestore false) → restore → receipt verification.
    * Auth required.
    */
@@ -911,7 +911,7 @@ export class AureonClient {
 
     await this.applyMarketEvent({
       name: "NVDA rally — green book, off-plan sleeve",
-      description: "Update 7 full loop — autoRestore false to expose plan paradox",
+      description: "Full loop — autoRestore false to expose plan paradox",
       symbol: "NVDA",
       priceChangeRatio: 0.45,
       autoRestore: false,
@@ -1009,7 +1009,7 @@ export class AureonClient {
 
   /**
    * Applies a controlled market event to portfolio marks.
-   * When autoRestore is true, the API evaluates health and may run staged restorative execution.
+   * When autoRestore is true, the API may run restore. Omit or false = drift only, no restore. Automatic still 409s if the vault cannot execute.
    * Auth required.
    */
   async applyMarketEvent(input: ApplyMarketEventInput): Promise<{
@@ -1062,7 +1062,8 @@ export class AureonClient {
   }
 
   /**
-   * Runs vault-backed restorative execution for an objective outside policy.
+   * Runs restorative execution for an objective outside policy.
+   * Receipt.settlement may be vault or staged. Only verifiedOnChain is proof.
    * Auth required.
    */
   async restoreObjective(objectiveId: string): Promise<ExecutionReceipt> {
@@ -1264,12 +1265,15 @@ export class AureonClient {
    */
   async getAuditTrail(objectiveId: string): Promise<FinancialAuditTrail> {
     assertId(objectiveId, "objective id");
-    const [objective, healthRows, receipts, settlements, timeline] =
+    const [objective, healthRows, receipts, settlementsResult, timeline] =
       await Promise.all([
         this.getObjective(objectiveId),
         this.getHealth(objectiveId),
         this.listExecutions(objectiveId),
-        this.listSettlements(objectiveId).catch(() => [] as SettlementRecord[]),
+        this.listSettlements(objectiveId).then(
+          (rows) => ({ ok: true as const, rows }),
+          () => ({ ok: false as const, rows: [] as SettlementRecord[] })
+        ),
         this.getTimeline(objectiveId),
       ]);
 
@@ -1277,10 +1281,11 @@ export class AureonClient {
       registered: false,
       objectiveId,
     };
+    let registryLookupFailed = false;
     try {
       registry = await this.getObjectiveRegistry(objectiveId);
     } catch {
-      // Registry lookup optional — trail still exports what exists.
+      registryLookupFailed = true;
     }
 
     return buildFinancialAuditTrail({
@@ -1288,8 +1293,10 @@ export class AureonClient {
       health: healthRows[0],
       registry,
       receipts: sortExecutionsNewestFirst(receipts),
-      settlements,
+      settlements: settlementsResult.rows,
       timeline,
+      registryLookupFailed,
+      settlementsLookupFailed: !settlementsResult.ok,
     });
   }
 }
