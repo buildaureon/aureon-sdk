@@ -605,10 +605,10 @@ pnpm --filter @buildaureon/sdk cli objectives
 Requires `AUREON_API_KEY`:
 
 ```bash
-pnpm example:ai-to-objective-to-portfolio  
-pnpm example:drift-detect-restore           
+pnpm example:ai-to-objective-to-portfolio   
+pnpm example:drift-detect-restore          
 pnpm example:receipt-verification          
-pnpm example:portfolio-watch               
+pnpm example:portfolio-watch              
 pnpm example:full-aureon-loop             
 pnpm example:green-vs-plan                  
 ```
