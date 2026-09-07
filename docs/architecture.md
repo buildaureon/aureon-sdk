@@ -127,7 +127,7 @@ sequenceDiagram
 
 - **Capital Book** — gateway portfolio used for weight math (`syncPortfolio`).
 - **Vault balances** — on-chain capital Automatic restores trade against.
-- Empty vault ⇒ Automatic restores cannot meaningfully settle on-chain even if policy exists.
+- Empty vault ⇒ Automatic restore returns 409. It does not stage a fake success or edit the capital book.
 
 ---
 
