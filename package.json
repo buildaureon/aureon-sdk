@@ -1,6 +1,6 @@
 {
   "name": "@buildaureon/sdk",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Official TypeScript SDK for AUREON Financial Compass on Robinhood Chain",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,6 +15,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "docs",
     "examples",
@@ -55,6 +56,9 @@
     "url": "https://github.com/buildaureon/aureon-sdk"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
