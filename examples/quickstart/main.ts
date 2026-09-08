@@ -2,17 +2,18 @@
  * @fileoverview Quickstart — control-plane calls with an issued developer API key.
  *
  * Env (required for integrators — nothing else):
- *   AUREON_API_KEY  issued key from https://app.aureonlabs.network → Developers
- *   AUREON_API_URL  optional (default https://api.aureonlabs.network)
+ *   AUREON_API_KEY     issued key from Developers
+ *   AUREON_NETWORK     optional; omit for mainnet (4663 / 8788); set testnet for public host (still 46630)
+ *   AUREON_API_URL     optional override (must match network if both set)
  *
  *   pnpm --filter @buildaureon/sdk example:quickstart
  */
 
 import {
   createAureonClient,
-  DEFAULT_API_BASE_URL,
   formatWeight,
   isAureonError,
+  resolveAureonNetworkFromEnv,
 } from "../../src/index.js";
 
 async function main(): Promise<void> {
@@ -23,8 +24,10 @@ async function main(): Promise<void> {
     );
   }
 
+  const resolved = resolveAureonNetworkFromEnv();
   const aureon = createAureonClient({
-    baseUrl: process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL,
+    network: resolved.network,
+    baseUrl: resolved.baseUrl,
     apiKey,
   });
 
@@ -58,7 +61,7 @@ async function main(): Promise<void> {
   );
 
   console.log(
-    "hint: private key is only needed later to broadcast prepare-deposit / prepare-withdraw steps"
+    "hint: empty vault restore is 409. prepare-deposit is unsigned — the user broadcasts when they fund. Agents do not."
   );
 }
 
