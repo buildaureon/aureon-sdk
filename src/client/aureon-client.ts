@@ -13,7 +13,7 @@
  */
 
 import { resolveFetch, userAgentHeader } from "../adapters/fetch-adapter.js";
-import { SDK_VERSION } from "../constants/defaults.js";
+import { NETWORK_HEADER, SDK_VERSION } from "../constants/defaults.js";
 import {
   resolveAureonNetwork,
   type AureonNetwork,
@@ -236,6 +236,7 @@ export class AureonClient {
       headers: {
         ...userAgentHeader(SDK_VERSION),
         ...resolveHeaders({ ...options, apiKey: undefined }),
+        [NETWORK_HEADER]: resolved.network,
       },
       timeoutMs: resolveTimeoutMs(options),
       maxRetries: resolveMaxRetries(options),
