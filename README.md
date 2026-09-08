@@ -7,11 +7,11 @@
 The official TypeScript HTTP client for the AUREON API.
 Financial Compass, capital health, and verified restore plans: one typed integration surface.
 
-**Contract Address (CA):** `0xd293291060334d42e5dbea6fb854c231af527777`
+Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault and token addresses from the API you actually call.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.1-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.8-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -33,18 +33,19 @@ pnpm add @buildaureon/sdk
 2. [What is AUREON?](#what-is-aureon)
 3. [What this SDK is](#what-this-sdk-is)
 4. [Ecosystem](#ecosystem)
-5. [Full system architecture](#full-system-architecture)
-6. [End-to-end flows](#end-to-end-flows)
-7. [Requirements & installation](#requirements--installation)
-8. [Quick start](#quick-start)
-9. [Authentication](#detailed-authentication-guide)
-10. [API surface reference](#api-surface-reference--code-walkthroughs)
-11. [Client configuration](#client-configuration--transport-engine)
-12. [Error model](#error-model-and-code-handling)
-13. [CLI](#cli-command-line-guide)
-14. [Design principles](#design-principles--settlement-honesty)
-15. [Documentation registry](#documentation-registry)
-16. [Community](#community--resources)
+5. [Networks](#networks)
+6. [Full system architecture](#full-system-architecture)
+7. [End-to-end flows](#end-to-end-flows)
+8. [Requirements & installation](#requirements--installation)
+9. [Quick start](#quick-start)
+10. [Authentication](#detailed-authentication-guide)
+11. [API surface reference](#api-surface-reference--code-walkthroughs)
+12. [Client configuration](#client-configuration--transport-engine)
+13. [Error model](#error-model-and-code-handling)
+14. [CLI](#cli-command-line-guide)
+15. [Design principles](#design-principles--settlement-honesty)
+16. [Documentation registry](#documentation-registry)
+17. [Community](#community--resources)
 
 ---
 
@@ -164,6 +165,20 @@ flowchart TB
 | **Operator utility** | [app.aureonlabs.network](https://app.aureonlabs.network) | Human console for keys, capital, and policy |
 | **Smart Vaults** | Robinhood Chain | Non-custodial on-chain capital path |
 | **Website** | [aureonlabs.network](https://www.aureonlabs.network/) | Product narrative and entry points |
+
+---
+
+## Networks
+
+Omitted `network` / omitted `baseUrl` is **local mainnet**: Robinhood Chain **4663**, API `http://127.0.0.1:8788`, explorer [robinhoodchain.blockscout.com](https://robinhoodchain.blockscout.com). Cash on this path parks in **USDG**. Pass `network: "testnet"` (or `AUREON_NETWORK=testnet`) for the public host `https://api.aureonlabs.network`, which remains Robinhood Chain **testnet 46630**. An explicit `baseUrl` still wins; a mismatched `network` and URL throws.
+
+The public host is not chain 4663 until that host is cut over. Issue developer keys on the **same** API the client will call. First use matches testnet: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
+
+| | Mainnet (default) | Testnet (opt-in) |
+| --- | --- | --- |
+| Chain ID | 4663 | 46630 |
+| API | `http://127.0.0.1:8788` | `https://api.aureonlabs.network` |
+| Utility | Living Capital on `http://127.0.0.1:5174` | [app.aureonlabs.network](https://app.aureonlabs.network) |
 
 ---
 
@@ -333,9 +348,11 @@ import { createAureonClient } from "@buildaureon/sdk";
 
 async function run() {
   const aureon = createAureonClient({
-    baseUrl: "https://api.aureonlabs.network",
     apiKey: process.env.AUREON_API_KEY!, // issued key from Developers console
   });
+  // Default network is mainnet (4663 / http://127.0.0.1:8788).
+  // Opt in to testnet: createAureonClient({ network: "testnet", apiKey })
+  // Public api.aureonlabs.network is still chain 46630.
 
   const me = await aureon.me();
   console.log("wallet", me.walletAddress);
@@ -479,7 +496,7 @@ for (const step of depositData.steps) {
 
 ### Restore plans and rebalances
 
-When health is in violation, fetch the plan and execute. Always read `settlement` on the receipt.
+When health is in violation, fetch the plan and execute. Always read `settlement` on the receipt. On **first use** the vault is empty: `restoreObjective` returns HTTP **409**. Call `prepareVaultDeposit`, return the unsigned steps, and wait for the user or host wallet to broadcast. Do not fund the vault from an agent or script. After a deposit, Automatic restore can settle on-chain; `verifiedOnChain` is true only after a vault rebalance for that wallet.
 
 ```ts
 const plan = await aureon.getRestorePlan(objective.id);
@@ -525,7 +542,8 @@ await aureon.revokeApiKey(newKey.id);
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `baseUrl` | `string` | `"https://api.aureonlabs.network"` | API ingress |
+| `network` | `"mainnet" \| "testnet"` | `"mainnet"` | Bundles chain + API. Mainnet is 4663 / local 8788. Testnet is optional (public host, still 46630). |
+| `baseUrl` | `string` | mainnet `http://127.0.0.1:8788` | Explicit URL still wins. Must not disagree with `network`. |
 | `apiKey` | `string` | `undefined` | Sent as `X-Aureon-Api-Key` |
 | `authToken` | `string` | `undefined` | Static JWT bearer |
 | `getAccessToken` | `() => string \| null` | `undefined` | Dynamic bearer resolver |
@@ -638,6 +656,7 @@ Long-form technical docs live under `docs/`:
 | [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
 | [docs/security.md](docs/security.md) | API key and token guidance |
 | [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
+| [CHANGELOG.md](CHANGELOG.md) | Published versions, including 0.1.8 networks and first-use |
 
 ---
 
