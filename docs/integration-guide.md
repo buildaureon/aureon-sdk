@@ -11,8 +11,11 @@ Integrate `@buildaureon/sdk` into server-side agents and automated rebalancing l
 ```mermaid
 flowchart TD
   Init[1_issued_API_key_client] --> Sync[2_sync_Capital_Book]
-  Sync --> Fund[3_fund_vault_if_empty]
-  Fund --> Obj[4_create_Auto_objective]
+  Sync --> Empty{vault empty?}
+  Empty -->|yes| FourOhNine[restore 409]
+  FourOhNine --> Prep[prepareVaultDeposit unsigned]
+  Prep --> User[user/host signs when they use it]
+  Empty -->|no| Obj[create Auto objective]
   Obj --> Loop[5_watchdog_heartbeat]
   Loop -->|breach| Plan[6_restore_plan]
   Plan --> Restore[7_restoreObjective]
@@ -22,10 +25,12 @@ flowchart TD
 ### Step 1 — Client
 
 ```ts
-import { createAureonClient } from "@buildaureon/sdk";
+import { createAureonClient, resolveAureonNetworkFromEnv } from "@buildaureon/sdk";
 
+const resolved = resolveAureonNetworkFromEnv();
 export const aureon = createAureonClient({
-  baseUrl: process.env.AUREON_API_URL || "https://api.aureonlabs.network",
+  network: resolved.network,
+  baseUrl: resolved.baseUrl,
   apiKey: process.env.AUREON_API_KEY!, // issued Developers key
   timeoutMs: 30_000,
   maxRetries: 2,
@@ -39,11 +44,17 @@ console.log("operating as", me.walletAddress);
 Optional Bearer (usually unnecessary with an issued key):
 
 ```ts
-import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk";
+import {
+  createAureonClient,
+  createSessionTokenProvider,
+  resolveAureonNetworkFromEnv,
+} from "@buildaureon/sdk";
 
+const resolved = resolveAureonNetworkFromEnv();
 const session = createSessionTokenProvider(process.env.AUREON_TOKEN ?? null);
 export const aureon = createAureonClient({
-  baseUrl: process.env.AUREON_API_URL || "https://api.aureonlabs.network",
+  network: resolved.network,
+  baseUrl: resolved.baseUrl,
   apiKey: process.env.AUREON_API_KEY ?? null,
   getAccessToken: session.getAccessToken,
 });
@@ -62,28 +73,19 @@ console.log({
 
 Prefer `syncPortfolio()` over hand-seeded books in production. Use `setPortfolio` only for controlled rehearsals.
 
-### Step 3 — Fund vault when needed
+### Step 3 — Empty vault is first use (do not fund for the user)
 
-Automatic restores require vault capital. Prepare returns **unsigned** steps — your host signs and broadcasts.
+Automatic restore on an empty vault must **409**. That is the same path as testnet. The SDK/MCP process does **not** broadcast a deposit. When the user actually uses the product, their host wallet signs `prepareVaultDeposit` steps.
 
 ```ts
 import type { VaultPrepareResult } from "@buildaureon/sdk";
 
-async function ensureVaultFunded(
-  symbol: string,
-  amount: string,
-  broadcast: (step: VaultPrepareResult["steps"][number]) => Promise<string>
-) {
-  const status = await aureon.getVaultStatus();
-  if (!status.empty && status.canRestore) return status;
-
-  const prep = await aureon.prepareVaultDeposit({ symbol, amount });
-  for (const step of prep.steps) {
-    const hash = await broadcast(step);
-    console.log(step.label, hash);
-  }
-
-  return aureon.getVaultStatus();
+const status = await aureon.getVaultStatus();
+if (status.empty) {
+  // restoreObjective must 409 here — do not treat that as a bug
+  const prep = await aureon.prepareVaultDeposit({ symbol: "USDG", amount: "0.05" });
+  // prep.steps are UNSIGNED. Return them. The user broadcasts when they fund.
+  return prep;
 }
 ```
 
@@ -317,7 +319,8 @@ module.exports = {
       autorestart: true,
       env: {
         NODE_ENV: "production",
-        AUREON_API_URL: "https://api.aureonlabs.network",
+        // omit AUREON_API_URL for local mainnet 8788 / 4663
+        // AUREON_NETWORK: "testnet"  // public host, still 46630
         // AUREON_API_KEY from secret store / PM2 ecosystem secrets
       },
     },
@@ -380,7 +383,7 @@ Never log API keys, Bearer tokens, or private keys.
 | --- | --- | --- |
 | 401 invalid key | Wrong / paused / revoked key | Rotate in Developers |
 | 401 need issued key | Env bootstrap key alone | Use an issued Developers key |
-| Vault empty / cannot restore | No vault capital | `prepareVaultDeposit` → broadcast → sync |
+| Vault empty / cannot restore | First use — no user deposit yet | `prepareVaultDeposit` (unsigned). User/host broadcasts when they fund. Agents do not. |
 | Update rejects symbol/mode | Locked at create | Recreate objective |
 | Restore receipt `staged` | Ledger-local path | Do not claim on-chain |
 | Health still violated after restore | Prices / sizing / liquidity | Re-read plan, vault balances, timeline |
