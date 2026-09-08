@@ -32,8 +32,8 @@ import {
 } from "@buildaureon/sdk";
 
 const aureon = createAureonClient({
-  // network defaults to mainnet (4663 / http://127.0.0.1:8788)
-  // network: "testnet" → public host (still chain 46630)
+  // network defaults to official API / testnet 46630
+  // network: "mainnet" → chain 4663 on the same official host
   apiKey: process.env.AUREON_API_KEY,
   getAccessToken: () => sessionToken,
   timeoutMs: 30_000,
@@ -45,8 +45,8 @@ const aureon = createAureonClient({
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `network` | no | `mainnet` | `mainnet` = 4663 / `http://127.0.0.1:8788`. `testnet` = public host (still 46630). |
-| `baseUrl` | no | mainnet local API | Absolute `http://` or `https://` URL. Wins when set; mismatch with `network` throws. |
+| `network` | no | `testnet` | Omit for official API / 46630. Pass `"mainnet"` for chain 4663. |
+| `baseUrl` | no | `https://api.aureonlabs.network` | Leave unset. Override only if you must point at another host. |
 | `apiKey` | SDK / CLI | N/A | Sent as `X-Aureon-Api-Key`. Issued developer keys also identify the bound wallet (no Bearer required). Env bootstrap keys are product-gate only. Utility uses wallet Bearer only. |
 | `getAccessToken` | no | N/A | Optional Bearer getter. Wins over API-key identity when present. |
 | `authToken` | no | N/A | Static Bearer string when `getAccessToken` is omitted. |
@@ -61,10 +61,10 @@ const aureon = createAureonClient({
 
 | Rule | Behavior |
 |------|----------|
-| Omitted `network` and `baseUrl` | Local mainnet `http://127.0.0.1:8788`, chain 4663 |
-| `network: "testnet"` | Public `https://api.aureonlabs.network` (still 46630) |
-| Explicit `baseUrl` | Wins; infer network from known hosts |
-| `network` + disagreeing `baseUrl` | Throws |
+| Omitted `network` and `baseUrl` | Official API `https://api.aureonlabs.network`, chain 46630 |
+| `network: "mainnet"` | Same official host, chain 4663 |
+| Explicit `baseUrl` | Override; official host is allowed with either network |
+| `network` + disagreeing non-official host | Throws |
 | Invalid `baseUrl` scheme | Throws via `assertBaseUrl` |
 | `aureon.network` / `aureon.chainId` | Resolved bundle |
 | Both `authToken` and `getAccessToken` | Transport uses `getAccessToken` only |
