@@ -17,7 +17,7 @@ flowchart LR
   Types --> Docs[This Reference Document]
 ```
 
-This guide details each model, its fields, TypeScript types, constraints, and includes mock JSON examples.
+This guide details each model, its fields, TypeScript types, constraints, and includes illustrative JSON examples.
 
 ---
 
@@ -306,7 +306,7 @@ Standardized event categories:
 *   `health_changed` or `violation_detected` or `objective_restored`: State transition checks.
 *   `evaluation_started`: Heartbeat watchdog runs.
 *   `execution_started` or `execution_completed`: Rebalance execution tracking.
-*   `market_event_applied`: Controlled mock changes for system testing.
+*   `market_event_applied`: Controlled mark changes for system testing.
 *   `capital_provisioned` or `capital_synced` or `capital_cleared`: Portfolio ledger events.
 
 ```ts
@@ -611,7 +611,7 @@ export interface VaultPrepareResult {
 
 ## 8. Market Domain
 
-Supports simulation and pricing variables for testing rebalances.
+Supports controlled market events and pricing variables for rehearsing rebalances.
 
 ### MarketEvent
 
