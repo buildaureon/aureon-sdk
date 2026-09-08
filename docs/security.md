@@ -82,7 +82,7 @@ Never collapse staged into “confirmed on Robinhood Chain.”
 
 ## 5. Transport and logging hygiene
 
-- Default omitted client is local mainnet `http://127.0.0.1:8788` (4663). Use `network: "testnet"` for the public host (still 46630). Do not call that host production.
+- Default omitted client is the official API `https://api.aureonlabs.network` (currently testnet 46630). Use `network: "mainnet"` for chain 4663 on the same host. Do not call that host production until it is cut over.
 - Do not log raw `Authorization` or `X-Aureon-Api-Key`.
 - Redact prepare step calldata in public logs if it includes sensitive amounts in your threat model.
 - Set `timeoutMs` / `maxRetries` deliberately for agent loops (see [transport.md](./transport.md)).
