@@ -65,6 +65,33 @@ test("attaches Authorization Bearer header", async () => {
   assert.equal(seenAuth, "Bearer test-token-123");
 });
 
+test("AureonClient sends X-Aureon-Network (omit → testnet)", async () => {
+  const { AureonClient } = await import("../src/client/aureon-client.js");
+  let seen: string | null = null;
+  const fetchImpl: typeof fetch = async (_url, init) => {
+    const headers = new Headers(init?.headers);
+    seen = headers.get("X-Aureon-Network");
+    return jsonResponse(200, { ok: true, service: "aureon-api", version: "0.2.0" });
+  };
+
+  const omitted = new AureonClient({
+    baseUrl: "https://api.aureonlabs.network",
+    fetch: fetchImpl,
+    maxRetries: 0,
+  });
+  await omitted.ping();
+  assert.equal(seen, "testnet");
+
+  const mainnet = new AureonClient({
+    network: "mainnet",
+    baseUrl: "https://api.aureonlabs.network",
+    fetch: fetchImpl,
+    maxRetries: 0,
+  });
+  await mainnet.ping();
+  assert.equal(seen, "mainnet");
+});
+
 test("AureonClient sends X-Aureon-Api-Key from apiKey option", async () => {
   const { AureonClient } = await import("../src/client/aureon-client.js");
   let seenKey: string | null = null;
