@@ -32,7 +32,8 @@ import {
 } from "@buildaureon/sdk";
 
 const aureon = createAureonClient({
-  // baseUrl defaults to https://api.aureonlabs.network
+  // network defaults to mainnet (4663 / http://127.0.0.1:8788)
+  // network: "testnet" → public host (still chain 46630)
   apiKey: process.env.AUREON_API_KEY,
   getAccessToken: () => sessionToken,
   timeoutMs: 30_000,
@@ -44,7 +45,8 @@ const aureon = createAureonClient({
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `baseUrl` | no | `https://api.aureonlabs.network` | Absolute `http://` or `https://` URL. |
+| `network` | no | `mainnet` | `mainnet` = 4663 / `http://127.0.0.1:8788`. `testnet` = public host (still 46630). |
+| `baseUrl` | no | mainnet local API | Absolute `http://` or `https://` URL. Wins when set; mismatch with `network` throws. |
 | `apiKey` | SDK / CLI | N/A | Sent as `X-Aureon-Api-Key`. Issued developer keys also identify the bound wallet (no Bearer required). Env bootstrap keys are product-gate only. Utility uses wallet Bearer only. |
 | `getAccessToken` | no | N/A | Optional Bearer getter. Wins over API-key identity when present. |
 | `authToken` | no | N/A | Static Bearer string when `getAccessToken` is omitted. |
@@ -59,8 +61,12 @@ const aureon = createAureonClient({
 
 | Rule | Behavior |
 |------|----------|
-| Omitted `baseUrl` | Uses production default |
+| Omitted `network` and `baseUrl` | Local mainnet `http://127.0.0.1:8788`, chain 4663 |
+| `network: "testnet"` | Public `https://api.aureonlabs.network` (still 46630) |
+| Explicit `baseUrl` | Wins; infer network from known hosts |
+| `network` + disagreeing `baseUrl` | Throws |
 | Invalid `baseUrl` scheme | Throws via `assertBaseUrl` |
+| `aureon.network` / `aureon.chainId` | Resolved bundle |
 | Both `authToken` and `getAccessToken` | Transport uses `getAccessToken` only |
 | `aureon.baseUrl` getter | Returns resolved base (no trailing slash) |
 
@@ -380,7 +386,7 @@ async getAllocationVsTarget(): Promise<{
 | Auth | Required |
 | HTTP | Composite — parallel `GET /overview`, `GET /objectives`, `GET /health` |
 | Returns | Per-objective current vs target weights plus a green-book/off-plan paradox flag |
-| Use | Update 2 demo — objective vs actual portfolio without stitching JSON yourself |
+| Use | demo — objective vs actual portfolio without stitching JSON yourself |
 
 Helpers `buildAllocationComparison()` and `detectPlanParadox()` are exported for custom integrators. See `pnpm example:green-vs-plan`.
 
@@ -395,7 +401,7 @@ async applyFinancialIntent(intent: FinancialIntent): Promise<ObjectivePortfolioF
 | Auth | Required |
 | HTTP | Composite — `POST /objectives` + watchdog refresh + `GET /health` + `GET /portfolio` |
 | Returns | Intent summary, created objective, health, portfolio snapshot, teaching message |
-| Use | Update 3 — AI → objective → portfolio in one call |
+| Use | AI → objective → portfolio in one call |
 
 ### `getObjectivePortfolioFlow(objectiveId?)`
 
@@ -422,7 +428,7 @@ async runDriftRestoreDemo(): Promise<DriftRestoreFlow>
 | Auth | Required |
 | HTTP | Composite — portfolio seed, objective create, market event (`autoRestore: false`), restore plan, manual restore |
 | Returns | Three-beat `DriftRestoreFlow` — aligned → drift → restored |
-| Use | Update 4 — drift → detection → restore teaching demo |
+| Use | drift → detection → restore teaching demo |
 
 ### `getDriftRestoreFlow(objectiveId?)`
 
@@ -449,7 +455,7 @@ async runReceiptVerificationDemo(): Promise<ReceiptVerificationFlow>
 | Auth | Required |
 | HTTP | Composite — `runDriftRestoreDemo()` + local validation + settlement lookup + timeline |
 | Returns | Three-beat `ReceiptVerificationFlow` — claim → validate → verify |
-| Use | Update 5 — receipt → verification teaching demo |
+| Use | receipt → verification teaching demo |
 
 ### `getReceiptVerificationFlow(executionId?)`
 
@@ -479,7 +485,7 @@ async runPortfolioWatchDemo(input?: {
 | Auth | Required |
 | HTTP | Composite — `applyFinancialIntent` + market event (`autoRestore: true`) + timeline |
 | Returns | Portfolio watch flow — register → while away → return briefing |
-| Use | Update 6 — agent-in-host demo |
+| Use | agent-in-host demo |
 
 ### `getPortfolioWatchFlow(input?)`
 
@@ -512,7 +518,7 @@ async runFullAureonLoopDemo(input?: {
 | Auth | Required |
 | HTTP | Composite — intent + allocation paradox + restore (`autoRestore: false`) + receipt verification |
 | Returns | Full loop — intent → plan check → restore → verify |
-| Use | Content Arc Update 7 — full AUREON loop positioning demo |
+| Use | Content Arc — full AUREON loop positioning demo |
 
 ### `getFullAureonLoopFlow(input?)`
 
@@ -644,7 +650,7 @@ async applyMarketEvent(input: ApplyMarketEventInput): Promise<{
 |--|--|
 | Auth | Required |
 | HTTP | `POST /market/events` |
-| Normalization | Uppercases symbol; `autoRestore` defaults **true** |
+| Normalization | Uppercases symbol; `autoRestore` defaults **false** (must opt in to restore) |
 | Validation | Symbol required; finite `priceChangeRatio`; rejects extreme ≤ -0.95 |
 
 ### `getRestorePlan(objectiveId)`
