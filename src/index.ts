@@ -162,6 +162,14 @@ export { assertBaseUrl, joinUrl, requestJson, withQuery } from "./transport/inde
 export {
   DEFAULT_API_BASE_URL,
   LOCAL_API_BASE_URL,
+  MAINNET_API_BASE_URL,
+  MAINNET_CHAIN_ID,
+  TESTNET_API_BASE_URL,
+  TESTNET_CHAIN_ID,
+  AUREON_NETWORKS,
+  inferAureonNetworkFromUrl,
+  resolveAureonNetwork,
+  resolveAureonNetworkFromEnv,
   API_KEY_HEADER,
   DEFAULT_TIMEOUT_MS,
   PRODUCT_NAME,
@@ -169,6 +177,11 @@ export {
   SDK_NAME,
   SDK_VERSION,
   ENDPOINTS,
+} from "./constants/index.js";
+export type {
+  AureonNetwork,
+  AureonNetworkPreset,
+  ResolveAureonNetworkInput,
 } from "./constants/index.js";
 
 export {
