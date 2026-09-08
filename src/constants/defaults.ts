@@ -2,11 +2,13 @@
  * @fileoverview Default runtime values for SDK clients and examples.
  */
 
-/** Production AUREON API (public integrators). */
-export const DEFAULT_API_BASE_URL = "https://api.aureonlabs.network";
+import { MAINNET_API_BASE_URL, TESTNET_API_BASE_URL } from "./networks.js";
 
-/** Local monorepo preview only; not for public docs. */
-export const LOCAL_API_BASE_URL = "http://127.0.0.1:8787";
+/** Testnet public host (chain 46630). Not the omitted-options client default. */
+export const DEFAULT_API_BASE_URL = TESTNET_API_BASE_URL;
+
+/** Local mainnet API (chain 4663). Same as MAINNET_API_BASE_URL. */
+export const LOCAL_API_BASE_URL = MAINNET_API_BASE_URL;
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
 export const SDK_VERSION = "0.1.7";
