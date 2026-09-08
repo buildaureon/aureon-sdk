@@ -13,10 +13,11 @@
  */
 
 import { resolveFetch, userAgentHeader } from "../adapters/fetch-adapter.js";
+import { SDK_VERSION } from "../constants/defaults.js";
 import {
-  DEFAULT_API_BASE_URL,
-  SDK_VERSION,
-} from "../constants/defaults.js";
+  resolveAureonNetwork,
+  type AureonNetwork,
+} from "../constants/networks.js";
 import {
   ENDPOINTS,
   developerApiKeyPath,
@@ -203,9 +204,17 @@ export interface CreatedDeveloperApiKey extends DeveloperApiKey {
  */
 export class AureonClient {
   private readonly transport: TransportOptions;
+  private readonly resolvedNetwork: AureonNetwork;
+  private readonly resolvedChainId: number;
 
   constructor(options: AureonClientOptions = {}) {
-    const baseUrl = options.baseUrl ?? DEFAULT_API_BASE_URL;
+    const resolved = resolveAureonNetwork({
+      network: options.network,
+      baseUrl: options.baseUrl,
+    });
+    this.resolvedNetwork = resolved.network;
+    this.resolvedChainId = resolved.chainId;
+    const baseUrl = resolved.baseUrl;
 
     const staticToken = options.authToken;
     const getAccessToken =
@@ -240,6 +249,16 @@ export class AureonClient {
   /** Returns the resolved API base URL. */
   get baseUrl(): string {
     return this.transport.baseUrl;
+  }
+
+  /** `mainnet` (4663) or `testnet` (46630). */
+  get network(): AureonNetwork {
+    return this.resolvedNetwork;
+  }
+
+  /** Chain id bundled with `network`. */
+  get chainId(): number {
+    return this.resolvedChainId;
   }
 
   /** Health probe for connectivity checks. No auth required. */
