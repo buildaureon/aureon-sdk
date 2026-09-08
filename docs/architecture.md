@@ -127,7 +127,7 @@ sequenceDiagram
 
 - **Capital Book** — gateway portfolio used for weight math (`syncPortfolio`).
 - **Vault balances** — on-chain capital Automatic restores trade against.
-- Empty vault ⇒ Automatic restore returns 409. It does not stage a fake success or edit the capital book.
+- Empty vault ⇒ Automatic restore returns 409. It does not record an on-chain restore or rewrite the capital book. The host prepares an unsigned deposit; the user signs when they use the product.
 
 ---
 
@@ -184,16 +184,20 @@ flowchart TD
 
 ---
 
-## 8. Network (early access testnet)
+## 8. Network
 
-| Item | Value |
-| --- | --- |
-| Chain | Robinhood Chain testnet |
-| Chain ID | `46630` |
-| API | `https://api.aureonlabs.network` |
-| Explorer | Configure via product / env (`AUREON_EXPLORER_BASE`) |
+Default omitted SDK/MCP options are **Robinhood Chain mainnet** (4663 + local API 8788). Public `api.aureonlabs.network` is still **testnet 46630**. First use is the same on both networks: empty vault → restore 409 → unsigned `prepareVaultDeposit` → host wallet / MetaMask broadcasts. MCP agents never broadcast.
 
-Confirm live addresses and allowlisted symbols from the operator utility and API responses — do not hardcode stale addresses in agents.
+| Item | Mainnet (default) | Testnet (opt-in) |
+| --- | --- | --- |
+| Chain | Robinhood Chain mainnet | Robinhood Chain testnet |
+| Chain ID | `4663` | `46630` |
+| API | `http://127.0.0.1:8788` | `https://api.aureonlabs.network` |
+| Cash park | USDG | Testnet catalog (see API) |
+| Explorer | `https://robinhoodchain.blockscout.com` | `https://explorer.testnet.chain.robinhood.com` |
+| Utility | Living Capital `http://127.0.0.1:5174` | [app.aureonlabs.network](https://app.aureonlabs.network) |
+
+The public host does not yet serve chain 4663. Confirm live addresses from the API you actually call.
 
 ---
 
