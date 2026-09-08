@@ -3,14 +3,15 @@
  *
  * Env:
  *   AUREON_API_KEY  issued developer key (required)
- *   AUREON_API_URL  optional (default https://api.aureonlabs.network)
+ *   AUREON_NETWORK  optional; omit for mainnet (4663 / 8788); set testnet for public host (still 46630)
+ *   AUREON_API_URL  optional override (must match network if both set)
  *
  *   pnpm example:portfolio-watch
  */
 
 import {
   createAureonClient,
-  DEFAULT_API_BASE_URL,
+  resolveAureonNetworkFromEnv,
   formatWeight,
   isAureonError,
   type PortfolioWatchFlow,
@@ -65,8 +66,10 @@ async function main(): Promise<void> {
     throw new Error("Set AUREON_API_KEY to an issued developer key.");
   }
 
+  const resolved = resolveAureonNetworkFromEnv();
   const aureon = createAureonClient({
-    baseUrl: process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL,
+    network: resolved.network,
+    baseUrl: resolved.baseUrl,
     apiKey,
   });
 
