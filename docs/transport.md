@@ -48,7 +48,8 @@ Issued developer keys in `X-Aureon-Api-Key` are enough for control-plane identit
 
 ```ts
 createAureonClient({
-  baseUrl: "https://api.aureonlabs.network",
+  // omit network → local mainnet 8788 / 4663
+  // network: "testnet" → public host (still 46630)
   apiKey: process.env.AUREON_API_KEY!,
   timeoutMs: 30_000,   // per attempt
   maxRetries: 2,        // extra attempts after first failure
@@ -128,7 +129,7 @@ Helpers may include console / silent adapters depending on package exports. Neve
 
 ## 8. Testing transport
 
-- Inject a fake `fetch` that returns controlled status/body.
+- Inject a test `fetch` that returns a controlled status and body.
 - Assert header presence of `X-Aureon-Api-Key` for SDK clients.
 - Assert retries by counting fetch invocations with `maxRetries > 0` and 503 responses.
 
