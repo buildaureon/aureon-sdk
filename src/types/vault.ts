@@ -2,9 +2,9 @@
  * @fileoverview Vault overview + prepare-tx contracts for AureonVault.
  *
  * Reads come from GET /vault and GET /vault/status.
- * Writes are wallet-signed: prepareDeposit / prepareWithdraw return calldata
- * steps; the host (or agent signer) broadcasts them; the API never holds
- * user keys.
+ * Writes are wallet-signed: prepareDeposit / prepareWithdraw return unsigned
+ * calldata steps. The host wallet or MetaMask broadcasts them. MCP agents
+ * never broadcast. The API never holds user keys.
  */
 
 /** Allowlisted vault token metadata from GET /vault. */
