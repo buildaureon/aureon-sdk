@@ -9,12 +9,15 @@ Phase 2 receipts must follow honest settlement rules. Use the SDK validator afte
 ```ts
 import {
   createAureonClient,
+  resolveAureonNetworkFromEnv,
   validateExecutionReceipt,
   assertValidExecutionReceipt,
 } from "@buildaureon/sdk";
 
+const resolved = resolveAureonNetworkFromEnv();
 const client = createAureonClient({
-  baseUrl: process.env.AUREON_API_URL!,
+  network: resolved.network,
+  baseUrl: resolved.baseUrl,
   apiKey: process.env.AUREON_API_KEY!,
 });
 
