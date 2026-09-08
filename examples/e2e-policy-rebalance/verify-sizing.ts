@@ -4,9 +4,10 @@
  * Env:
  *   AUREON_API_KEY            issued developer key
  *   AUREON_WALLET_PRIVATE_KEY 0x… signing key
- *   AUREON_API_URL            optional (default https://api.aureonlabs.network)
- *   AUREON_RPC_URL            optional
- *   AUREON_CHAIN_ID           optional (default 46630)
+ *   AUREON_NETWORK            optional; omit for mainnet 8788 / 4663; testnet = public host (still 46630)
+ *   AUREON_API_URL            optional override
+ *   AUREON_RPC_URL            optional (defaults from resolved chain)
+ *   AUREON_CHAIN_ID           optional (defaults from resolved network)
  */
 
 import {
@@ -20,7 +21,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import {
   createAureonClient,
   createSessionTokenProvider,
-  DEFAULT_API_BASE_URL,
+  resolveAureonNetworkFromEnv,
 } from "../../src/index.js";
 
 function requireEnv(name: string): string {
@@ -35,22 +36,26 @@ if (!/^0x[0-9a-fA-F]{64}$/.test(key)) {
 }
 
 const account = privateKeyToAccount(key);
+const resolved = resolveAureonNetworkFromEnv();
+const chainId = Number(process.env.AUREON_CHAIN_ID || resolved.chainId);
 const rpc =
   process.env.AUREON_RPC_URL?.trim() ||
-  "https://rpc.testnet.chain.robinhood.com";
-const chainId = Number(process.env.AUREON_CHAIN_ID || 46630);
+  (chainId === 4663
+    ? "https://rpc.mainnet.chain.robinhood.com"
+    : "https://rpc.testnet.chain.robinhood.com");
 const publicClient = createPublicClient({ transport: http(rpc) });
 const walletClient = createWalletClient({ account, transport: http(rpc) });
 const chain = {
   id: chainId,
-  name: "Robinhood Chain Testnet",
+  name: chainId === 4663 ? "Robinhood Chain" : "Robinhood Chain Testnet",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [rpc] } },
 } as const;
 
 const session = createSessionTokenProvider(null);
 const aureon = createAureonClient({
-  baseUrl: process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL,
+  network: resolved.network,
+  baseUrl: resolved.baseUrl,
   apiKey: requireEnv("AUREON_API_KEY"),
   getAccessToken: session.getAccessToken,
 });
