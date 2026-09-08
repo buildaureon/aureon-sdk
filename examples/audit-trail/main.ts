@@ -11,7 +11,7 @@
 
 import {
   createAureonClient,
-  DEFAULT_API_BASE_URL,
+  resolveAureonNetworkFromEnv,
   formatAuditTrailLines,
   isAureonError,
 } from "../../src/index.js";
@@ -22,8 +22,10 @@ async function main(): Promise<void> {
     throw new Error("Set AUREON_API_KEY to an issued developer key.");
   }
 
+  const resolved = resolveAureonNetworkFromEnv();
   const aureon = createAureonClient({
-    baseUrl: process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL,
+    network: resolved.network,
+    baseUrl: resolved.baseUrl,
     apiKey,
   });
 
