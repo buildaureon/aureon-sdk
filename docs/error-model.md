@@ -134,7 +134,7 @@ flowchart TD
 | --- | --- |
 | Invalid / paused key | Stop loop; operator rotates Developers key |
 | Bootstrap key alone | Switch to issued key |
-| Vault empty on restore | Prepare deposit → broadcast → sync → retry |
+| Vault empty on restore | Expected first use. Call `prepareVaultDeposit`, return unsigned steps, wait for the **user/host** to broadcast. Agents do not fund the vault. |
 | Locked field on update | Recreate objective |
 | Conflict mid-restore | Back off; read timeline / executions |
 | Staged settlement returned | Do not treat as on-chain success |
@@ -186,7 +186,7 @@ import {
 
 test("empty objective name fails validation", async () => {
   const client = createAureonClient({
-    baseUrl: "https://api.aureonlabs.network",
+    network: "testnet",
     apiKey: "test",
   });
 
