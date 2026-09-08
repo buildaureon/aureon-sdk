@@ -82,7 +82,7 @@ Never collapse staged into “confirmed on Robinhood Chain.”
 
 ## 5. Transport and logging hygiene
 
-- Prefer HTTPS production base URL `https://api.aureonlabs.network`.
+- Default omitted client is local mainnet `http://127.0.0.1:8788` (4663). Use `network: "testnet"` for the public host (still 46630). Do not call that host production.
 - Do not log raw `Authorization` or `X-Aureon-Api-Key`.
 - Redact prepare step calldata in public logs if it includes sensitive amounts in your threat model.
 - Set `timeoutMs` / `maxRetries` deliberately for agent loops (see [transport.md](./transport.md)).
