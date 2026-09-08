@@ -1,8 +1,8 @@
 {
-  "defaultNetwork": "mainnet",
-  "note": "Omitted network is local mainnet 4663 / 8788. Public api.aureonlabs.network is still testnet 46630.",
+  "defaultNetwork": "testnet",
+  "note": "Default API is https://api.aureonlabs.network. Omit network for testnet 46630. Pass network=mainnet for chain 4663 on the same official host. AUREON_API_URL overrides the host when set.",
   "mainnet": {
-    "baseUrl": "http://127.0.0.1:8788",
+    "baseUrl": "https://api.aureonlabs.network",
     "chainId": 4663,
     "chain": "Robinhood Chain",
     "explorer": "https://robinhoodchain.blockscout.com",
@@ -10,11 +10,11 @@
   },
   "testnet": {
     "baseUrl": "https://api.aureonlabs.network",
-    "localBaseUrl": "http://127.0.0.1:8787",
     "appUrl": "https://app.aureonlabs.network",
     "chainId": 46630,
-    "chain": "Robinhood Chain Testnet"
+    "chain": "Robinhood Chain Testnet",
+    "explorer": "https://explorer.testnet.chain.robinhood.com"
   },
   "sdkPackage": "@buildaureon/sdk",
-  "sdkVersion": "0.1.8"
+  "sdkVersion": "0.1.9"
 }
