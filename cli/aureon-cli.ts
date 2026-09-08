@@ -10,8 +10,8 @@
  *   pnpm --filter @buildaureon/sdk cli objectives
  *
  * Env:
- *   AUREON_NETWORK  — omit for mainnet (4663 / http://127.0.0.1:8788); set testnet for public host (still 46630)
- *   AUREON_API_URL  — optional override (must match network if both set)
+ *   AUREON_NETWORK  — omit for official API / testnet 46630; set mainnet for chain 4663
+ *   AUREON_API_URL  — optional override of https://api.aureonlabs.network
  *   AUREON_API_KEY  — issued developer key (identifies wallet) or env bootstrap key
  *   AUREON_TOKEN    — optional wallet Bearer (required only with env bootstrap keys)
  *
