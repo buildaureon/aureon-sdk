@@ -10,9 +10,10 @@
  *   pnpm --filter @buildaureon/sdk cli objectives
  *
  * Env:
- *   AUREON_API_URL   — defaults to https://api.aureonlabs.network
- *   AUREON_API_KEY   — issued developer key (identifies wallet) or env bootstrap key
- *   AUREON_TOKEN     — optional wallet Bearer (required only with env bootstrap keys)
+ *   AUREON_NETWORK  — omit for mainnet (4663 / http://127.0.0.1:8788); set testnet for public host (still 46630)
+ *   AUREON_API_URL  — optional override (must match network if both set)
+ *   AUREON_API_KEY  — issued developer key (identifies wallet) or env bootstrap key
+ *   AUREON_TOKEN    — optional wallet Bearer (required only with env bootstrap keys)
  *
  * Issued keys from the Developers console work alone for me/portfolio/sync/objectives.
  * Env bootstrap keys (`AUREON_API_KEYS` on the server) still need AUREON_TOKEN.
@@ -22,17 +23,19 @@
 import {
   createAureonClient,
   createSessionTokenProvider,
-  DEFAULT_API_BASE_URL,
   formatUsd,
   formatWeight,
   isAureonError,
+  resolveAureonNetworkFromEnv,
 } from "../src/index.js";
 
 const session = createSessionTokenProvider(process.env.AUREON_TOKEN ?? null);
 
 function client() {
+  const resolved = resolveAureonNetworkFromEnv();
   return createAureonClient({
-    baseUrl: process.env.AUREON_API_URL ?? DEFAULT_API_BASE_URL,
+    network: resolved.network,
+    baseUrl: resolved.baseUrl,
     apiKey: process.env.AUREON_API_KEY ?? null,
     getAccessToken: session.getAccessToken,
   });
