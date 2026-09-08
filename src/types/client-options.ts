@@ -7,8 +7,14 @@ import { API_KEY_HEADER } from "../constants/defaults.js";
 
 export interface AureonClientOptions {
   /**
-   * Base URL of the AUREON API.
-   * Defaults to `https://api.aureonlabs.network`.
+   * Robinhood network bundle. Omit for **mainnet** (4663, local 8788).
+   * Pass `"testnet"` for the public host (still chain 46630).
+   */
+  network?: "mainnet" | "testnet";
+  /**
+   * Base URL of the AUREON API. Wins when set.
+   * Omit together with `network` to use the mainnet local API.
+   * Must not disagree with an explicit `network` (fail closed).
    */
   baseUrl?: string;
   /**
