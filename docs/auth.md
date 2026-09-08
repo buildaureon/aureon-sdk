@@ -40,8 +40,9 @@ Control-plane calls (sync, objectives, health, restore, vault reads, prepare-*) 
 import { createAureonClient } from "@buildaureon/sdk";
 
 const aureon = createAureonClient({
-  baseUrl: "https://api.aureonlabs.network",
   apiKey: process.env.AUREON_API_KEY!, // issued key from Developers
+  // omit network → mainnet 4663 / http://127.0.0.1:8788
+  // network: "testnet" → public host (still 46630)
 });
 
 const me = await aureon.me();
@@ -88,7 +89,7 @@ import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk
 
 const session = createSessionTokenProvider(null);
 const aureon = createAureonClient({
-  baseUrl: "https://api.aureonlabs.network",
+  network: "testnet", // public host, still chain 46630
   apiKey: process.env.AUREON_API_KEY,
   getAccessToken: session.getAccessToken,
 });
@@ -143,7 +144,8 @@ session.clear();
 | Variable | Required | Description |
 | --- | --- | --- |
 | `AUREON_API_KEY` | Recommended | Issued developer key |
-| `AUREON_API_URL` | No | Defaults to `https://api.aureonlabs.network` |
+| `AUREON_NETWORK` | No | Omit for mainnet 4663 / `http://127.0.0.1:8788`. Set `testnet` for the public host (still 46630). |
+| `AUREON_API_URL` | No | Optional override. Must match `AUREON_NETWORK` if both are set. |
 | `AUREON_TOKEN` | No | Optional Bearer for CLI / scripts |
 
 CLI example:
