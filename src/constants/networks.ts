@@ -1,10 +1,9 @@
 /**
  * @fileoverview Robinhood Chain network presets for the SDK and MCP.
  *
- * Default `network` is **mainnet** (chain 4663, local API 8788).
- * Public `api.aureonlabs.network` is still testnet 46630 — opt in with
- * `network: "testnet"` or `AUREON_NETWORK=testnet`. Do not map mainnet
- * to that host.
+ * Users call the official API: https://api.aureonlabs.network
+ * `network` is a named parameter (`testnet` | `mainnet`), not a port.
+ * Set `baseUrl` / `AUREON_API_URL` only to override the official host.
  */
 
 export type AureonNetwork = "mainnet" | "testnet";
@@ -12,8 +11,14 @@ export type AureonNetwork = "mainnet" | "testnet";
 export const MAINNET_CHAIN_ID = 4663;
 export const TESTNET_CHAIN_ID = 46630;
 
-export const MAINNET_API_BASE_URL = "http://127.0.0.1:8788";
-export const TESTNET_API_BASE_URL = "https://api.aureonlabs.network";
+/** Official AUREON API. This is the default for integrators. */
+export const OFFICIAL_API_BASE_URL = "https://api.aureonlabs.network";
+
+/** Same host as the official API (current public deployment). */
+export const TESTNET_API_BASE_URL = OFFICIAL_API_BASE_URL;
+
+/** Same official hostname. Chain id is selected with `network`, not a port. */
+export const MAINNET_API_BASE_URL = OFFICIAL_API_BASE_URL;
 
 export const MAINNET_EXPLORER = "https://robinhoodchain.blockscout.com";
 export const TESTNET_EXPLORER = "https://explorer.testnet.chain.robinhood.com";
@@ -29,21 +34,21 @@ export const AUREON_NETWORKS: Record<AureonNetwork, AureonNetworkPreset> = {
   mainnet: {
     network: "mainnet",
     chainId: MAINNET_CHAIN_ID,
-    baseUrl: MAINNET_API_BASE_URL,
+    baseUrl: OFFICIAL_API_BASE_URL,
     explorer: MAINNET_EXPLORER,
   },
   testnet: {
     network: "testnet",
     chainId: TESTNET_CHAIN_ID,
-    baseUrl: TESTNET_API_BASE_URL,
+    baseUrl: OFFICIAL_API_BASE_URL,
     explorer: TESTNET_EXPLORER,
   },
 };
 
 export type ResolveAureonNetworkInput = {
-  /** Omit to default mainnet, unless only `baseUrl` is set (then infer). */
+  /** Omit for the official API (testnet 46630). Pass `mainnet` for chain 4663 on the same host. */
   network?: string | null;
-  /** Explicit API URL. Wins when set; mismatch with an explicit network throws. */
+  /** Override the official API URL. Users should leave this unset. */
   baseUrl?: string | null;
 };
 
@@ -59,10 +64,14 @@ function stripSlash(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
-/** Infer preset from a known host. Custom URLs return null (allowed). */
+function isOfficialApi(url: string): boolean {
+  return stripSlash(url).toLowerCase().includes("api.aureonlabs.network");
+}
+
+/** Infer preset from a non-official host. Official API is shared — not exclusive. */
 export function inferAureonNetworkFromUrl(url: string): AureonNetwork | null {
+  if (isOfficialApi(url)) return null;
   const u = stripSlash(url).toLowerCase();
-  if (u.includes("api.aureonlabs.network")) return "testnet";
   if (/:(8787)(\/|$)/.test(u) || u.endsWith(":8787")) return "testnet";
   if (/:(8788)(\/|$)/.test(u) || u.endsWith(":8788")) return "mainnet";
   return null;
@@ -71,25 +80,25 @@ export function inferAureonNetworkFromUrl(url: string): AureonNetwork | null {
 function mismatchMessage(network: AureonNetwork, baseUrl: string): string {
   return (
     `baseUrl "${baseUrl}" does not match network "${network}". ` +
-    `mainnet is ${MAINNET_API_BASE_URL} (4663). ` +
-    `testnet is ${TESTNET_API_BASE_URL} (46630; public host is still testnet).`
+    `The official API is ${OFFICIAL_API_BASE_URL}. ` +
+    `Use the network parameter for chain selection, not a port.`
   );
 }
 
 /**
  * Resolve network + URL + chainId as one bundle.
  *
- * - Neither set → mainnet (8788 / 4663).
- * - Only `network` → that preset's URL.
- * - Only `baseUrl` → that URL; infer network from known hosts, else mainnet.
- * - Both set and they disagree (known hosts) → throw.
+ * - Neither set → official API, testnet (46630).
+ * - Only `network` → official API + that chain.
+ * - Only `baseUrl` → that URL; official host stays testnet unless `network` is set.
+ * - Both set: official host is always allowed. Other known hosts must match.
  */
 export function resolveAureonNetwork(
   input: ResolveAureonNetworkInput = {}
 ): AureonNetworkPreset {
   const networkRaw = input.network?.trim();
   const networkSpecified = Boolean(networkRaw);
-  const network = networkSpecified ? parseNetwork(networkRaw!) : "mainnet";
+  const network = networkSpecified ? parseNetwork(networkRaw!) : "testnet";
   const explicitUrl = input.baseUrl?.trim();
 
   if (!explicitUrl) {
@@ -97,12 +106,23 @@ export function resolveAureonNetwork(
   }
 
   const baseUrl = stripSlash(explicitUrl);
+  if (isOfficialApi(baseUrl)) {
+    const resolvedNetwork = networkSpecified ? network : "testnet";
+    const preset = AUREON_NETWORKS[resolvedNetwork];
+    return {
+      network: resolvedNetwork,
+      chainId: preset.chainId,
+      baseUrl: OFFICIAL_API_BASE_URL,
+      explorer: preset.explorer,
+    };
+  }
+
   const inferred = inferAureonNetworkFromUrl(baseUrl);
   if (networkSpecified && inferred && inferred !== network) {
     throw new Error(mismatchMessage(network, baseUrl));
   }
 
-  const resolvedNetwork = networkSpecified ? network : (inferred ?? "mainnet");
+  const resolvedNetwork = networkSpecified ? network : (inferred ?? "testnet");
   const preset = AUREON_NETWORKS[resolvedNetwork];
   return {
     network: resolvedNetwork,
@@ -112,7 +132,7 @@ export function resolveAureonNetwork(
   };
 }
 
-/** MCP / CLI: `AUREON_NETWORK` optional, `AUREON_API_URL` still overrides. */
+/** MCP / CLI: `AUREON_NETWORK` optional, `AUREON_API_URL` overrides the official host. */
 export function resolveAureonNetworkFromEnv(
   env: NodeJS.Dict<string> = process.env
 ): AureonNetworkPreset {
