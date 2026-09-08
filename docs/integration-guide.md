@@ -319,8 +319,8 @@ module.exports = {
       autorestart: true,
       env: {
         NODE_ENV: "production",
-        // omit AUREON_API_URL for local mainnet 8788 / 4663
-        // AUREON_NETWORK: "testnet"  // public host, still 46630
+        // omit AUREON_API_URL for official API https://api.aureonlabs.network
+        // AUREON_NETWORK: "mainnet"  // chain 4663 on the same official host
         // AUREON_API_KEY from secret store / PM2 ecosystem secrets
       },
     },
