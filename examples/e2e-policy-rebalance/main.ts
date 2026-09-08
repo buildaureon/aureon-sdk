@@ -4,9 +4,10 @@
  * Env:
  *   AUREON_API_KEY            issued developer key (required)
  *   AUREON_WALLET_PRIVATE_KEY 0x… signing key (required)
- *   AUREON_API_URL            optional (default https://api.aureonlabs.network)
- *   AUREON_RPC_URL            optional
- *   AUREON_CHAIN_ID           optional (default 46630)
+ *   AUREON_NETWORK            optional; omit for mainnet 8788 / 4663; testnet = public host (still 46630)
+ *   AUREON_API_URL            optional override
+ *   AUREON_RPC_URL            optional (defaults from resolved chain)
+ *   AUREON_CHAIN_ID           optional (defaults from resolved network)
  *
  *   pnpm --filter @buildaureon/sdk example:e2e-policy
  */
@@ -25,7 +26,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import {
   createAureonClient,
   createSessionTokenProvider,
-  DEFAULT_API_BASE_URL,
+  resolveAureonNetworkFromEnv,
   isAureonError,
 } from "../../src/index.js";
 
@@ -61,11 +62,14 @@ function log(step: string, data?: unknown) {
 }
 
 async function main() {
-  const baseUrl = process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL;
+  const resolved = resolveAureonNetworkFromEnv();
+  const baseUrl = resolved.baseUrl;
+  const chainId = Number(process.env.AUREON_CHAIN_ID ?? resolved.chainId);
   const rpcUrl =
     process.env.AUREON_RPC_URL?.trim() ||
-    "https://rpc.testnet.chain.robinhood.com";
-  const chainId = Number(process.env.AUREON_CHAIN_ID ?? 46630);
+    (chainId === 4663
+      ? "https://rpc.mainnet.chain.robinhood.com"
+      : "https://rpc.testnet.chain.robinhood.com");
   const apiKey = requireEnv("AUREON_API_KEY");
 
   const account = privateKeyToAccount(loadKey());
@@ -73,7 +77,7 @@ async function main() {
   const walletClient = createWalletClient({ account, transport: http(rpcUrl) });
   const chain = {
     id: chainId,
-    name: "Robinhood Chain Testnet",
+    name: chainId === 4663 ? "Robinhood Chain" : "Robinhood Chain Testnet",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [rpcUrl] } },
   } as const;
@@ -82,6 +86,7 @@ async function main() {
 
   const session = createSessionTokenProvider(null);
   const aureon = createAureonClient({
+    network: resolved.network,
     baseUrl,
     apiKey,
     getAccessToken: session.getAccessToken,
