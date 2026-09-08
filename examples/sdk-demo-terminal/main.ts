@@ -3,7 +3,8 @@
  *
  * Env:
  *   AUREON_API_KEY  issued developer key (required)
- *   AUREON_API_URL  optional (default https://api.aureonlabs.network)
+ *   AUREON_NETWORK  optional; omit for mainnet (4663 / 8788); set testnet for public host (still 46630)
+ *   AUREON_API_URL  optional override (must match network if both set)
  *
  *   pnpm --filter @buildaureon/sdk example:sdk-demo-terminal
  *   pnpm --filter @buildaureon/sdk example:sdk-demo-terminal -- --create-only
@@ -11,7 +12,7 @@
 
 import {
   createAureonClient,
-  DEFAULT_API_BASE_URL,
+  resolveAureonNetworkFromEnv,
   formatWeight,
   isAureonError,
   type PortfolioPositionInput,
@@ -74,7 +75,8 @@ async function main(): Promise<void> {
     throw new Error("Set AUREON_API_KEY to an issued developer key.");
   }
 
-  const baseUrl = process.env.AUREON_API_URL?.trim() || DEFAULT_API_BASE_URL;
+  const resolved = resolveAureonNetworkFromEnv();
+  const baseUrl = resolved.baseUrl;
   line(
     "meta",
     CREATE_ONLY
@@ -82,7 +84,7 @@ async function main(): Promise<void> {
       : `@buildaureon/sdk · Automatic demo loop · ${baseUrl}`
   );
 
-  const aureon = createAureonClient({ baseUrl, apiKey });
+  const aureon = createAureonClient({ network: resolved.network, baseUrl, apiKey });
 
   line("cmd", "aureon.ping()");
   const ping = await aureon.ping();
