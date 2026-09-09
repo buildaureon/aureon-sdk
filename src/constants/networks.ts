@@ -46,7 +46,7 @@ export const AUREON_NETWORKS: Record<AureonNetwork, AureonNetworkPreset> = {
 };
 
 export type ResolveAureonNetworkInput = {
-  /** Omit for the official API (testnet 46630). Pass `mainnet` for chain 4663 on the same host. */
+  /** Omit for the official API on mainnet. Pass `testnet` to stay on testnet on the same host. */
   network?: string | null;
   /** Override the official API URL. Users should leave this unset. */
   baseUrl?: string | null;
@@ -88,9 +88,9 @@ function mismatchMessage(network: AureonNetwork, baseUrl: string): string {
 /**
  * Resolve network + URL + chainId as one bundle.
  *
- * - Neither set → official API, testnet (46630).
+ * - Neither set → official API, mainnet.
  * - Only `network` → official API + that chain.
- * - Only `baseUrl` → that URL; official host stays testnet unless `network` is set.
+ * - Only `baseUrl` → that URL; official host stays mainnet unless `network` is set.
  * - Both set: official host is always allowed. Other known hosts must match.
  */
 export function resolveAureonNetwork(
@@ -98,7 +98,7 @@ export function resolveAureonNetwork(
 ): AureonNetworkPreset {
   const networkRaw = input.network?.trim();
   const networkSpecified = Boolean(networkRaw);
-  const network = networkSpecified ? parseNetwork(networkRaw!) : "testnet";
+  const network = networkSpecified ? parseNetwork(networkRaw!) : "mainnet";
   const explicitUrl = input.baseUrl?.trim();
 
   if (!explicitUrl) {
@@ -107,7 +107,7 @@ export function resolveAureonNetwork(
 
   const baseUrl = stripSlash(explicitUrl);
   if (isOfficialApi(baseUrl)) {
-    const resolvedNetwork = networkSpecified ? network : "testnet";
+    const resolvedNetwork = networkSpecified ? network : "mainnet";
     const preset = AUREON_NETWORKS[resolvedNetwork];
     return {
       network: resolvedNetwork,
@@ -122,7 +122,7 @@ export function resolveAureonNetwork(
     throw new Error(mismatchMessage(network, baseUrl));
   }
 
-  const resolvedNetwork = networkSpecified ? network : (inferred ?? "testnet");
+  const resolvedNetwork = networkSpecified ? network : (inferred ?? "mainnet");
   const preset = AUREON_NETWORKS[resolvedNetwork];
   return {
     network: resolvedNetwork,
