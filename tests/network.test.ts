@@ -16,16 +16,16 @@ import {
   resolveAureonNetworkFromEnv,
 } from "../src/index.js";
 
-test("omitted options resolve to the official API / testnet 46630", () => {
+test("omitted options resolve to the official API / mainnet", () => {
   const resolved = resolveAureonNetwork();
-  assert.equal(resolved.network, "testnet");
+  assert.equal(resolved.network, "mainnet");
   assert.equal(resolved.baseUrl, OFFICIAL_API_BASE_URL);
-  assert.equal(resolved.chainId, TESTNET_CHAIN_ID);
+  assert.equal(resolved.chainId, MAINNET_CHAIN_ID);
 
   const client = createAureonClient();
-  assert.equal(client.network, "testnet");
+  assert.equal(client.network, "mainnet");
   assert.equal(client.baseUrl, OFFICIAL_API_BASE_URL);
-  assert.equal(client.chainId, TESTNET_CHAIN_ID);
+  assert.equal(client.chainId, MAINNET_CHAIN_ID);
 });
 
 test("network mainnet keeps the official API and chain 4663", () => {
@@ -57,12 +57,12 @@ test("official URL is allowed with either network", () => {
   assert.equal(asMainnet.chainId, MAINNET_CHAIN_ID);
 });
 
-test("only official baseUrl infers testnet", () => {
+test("only official baseUrl infers mainnet", () => {
   const resolved = resolveAureonNetwork({
     baseUrl: OFFICIAL_API_BASE_URL,
   });
-  assert.equal(resolved.network, "testnet");
-  assert.equal(resolved.chainId, TESTNET_CHAIN_ID);
+  assert.equal(resolved.network, "mainnet");
+  assert.equal(resolved.chainId, MAINNET_CHAIN_ID);
 });
 
 test("operator local 8788 with testnet throws", () => {
@@ -79,6 +79,8 @@ test("operator local 8788 with testnet throws", () => {
 test("createLocalAureonClient is operator-only local process", () => {
   const client = createLocalAureonClient();
   assert.equal(client.baseUrl, LOCAL_API_BASE_URL);
+  assert.equal(client.network, "mainnet");
+  assert.equal(client.chainId, MAINNET_CHAIN_ID);
 });
 
 test("resolveAureonNetworkFromEnv omit → official API", () => {
@@ -88,14 +90,14 @@ test("resolveAureonNetworkFromEnv omit → official API", () => {
     delete process.env.AUREON_NETWORK;
     delete process.env.AUREON_API_URL;
     const omitted = resolveAureonNetworkFromEnv();
-    assert.equal(omitted.network, "testnet");
+    assert.equal(omitted.network, "mainnet");
     assert.equal(omitted.baseUrl, OFFICIAL_API_BASE_URL);
 
-    process.env.AUREON_NETWORK = "mainnet";
-    const mainnet = resolveAureonNetworkFromEnv();
-    assert.equal(mainnet.network, "mainnet");
-    assert.equal(mainnet.baseUrl, OFFICIAL_API_BASE_URL);
-    assert.equal(mainnet.chainId, MAINNET_CHAIN_ID);
+    process.env.AUREON_NETWORK = "testnet";
+    const testnet = resolveAureonNetworkFromEnv();
+    assert.equal(testnet.network, "testnet");
+    assert.equal(testnet.baseUrl, OFFICIAL_API_BASE_URL);
+    assert.equal(testnet.chainId, TESTNET_CHAIN_ID);
   } finally {
     if (prevNet === undefined) delete process.env.AUREON_NETWORK;
     else process.env.AUREON_NETWORK = prevNet;
@@ -108,7 +110,7 @@ test("custom baseUrl with omitted network stays allowed", () => {
   const resolved = resolveAureonNetwork({
     baseUrl: "http://localhost:9999",
   });
-  assert.equal(resolved.network, "testnet");
+  assert.equal(resolved.network, "mainnet");
   assert.equal(resolved.baseUrl, "http://localhost:9999");
-  assert.equal(resolved.chainId, TESTNET_CHAIN_ID);
+  assert.equal(resolved.chainId, MAINNET_CHAIN_ID);
 });
