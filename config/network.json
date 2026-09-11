@@ -1,6 +1,6 @@
 {
-  "defaultNetwork": "testnet",
-  "note": "Default API is https://api.aureonlabs.network. Omit network for testnet 46630. Pass network=mainnet for chain 4663 on the same official host. AUREON_API_URL overrides the host when set.",
+  "defaultNetwork": "mainnet",
+  "note": "Default API is https://api.aureonlabs.network on mainnet. Pass network=testnet for testnet on the same official host. AUREON_API_URL overrides the host when set. Public Living Capital is still the testnet console.",
   "mainnet": {
     "baseUrl": "https://api.aureonlabs.network",
     "chainId": 4663,
@@ -16,5 +16,5 @@
     "explorer": "https://explorer.testnet.chain.robinhood.com"
   },
   "sdkPackage": "@buildaureon/sdk",
-  "sdkVersion": "0.1.9"
+  "sdkVersion": "0.1.10"
 }
