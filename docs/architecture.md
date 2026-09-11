@@ -186,18 +186,18 @@ flowchart TD
 
 ## 8. Network
 
-Default omitted SDK/MCP options use the official API `https://api.aureonlabs.network` on **testnet 46630**. Pass `network: "mainnet"` for chain **4663** on the same host. First use is the same on both networks: empty vault → restore 409 → unsigned `prepareVaultDeposit` → host wallet / MetaMask broadcasts. MCP agents never broadcast.
+Default omitted SDK/MCP options use the official API `https://api.aureonlabs.network` on **mainnet**. Pass `network: "testnet"` to stay on testnet on the same host. First use is the same on both networks: empty vault → restore 409 → unsigned `prepareVaultDeposit` → host wallet / MetaMask broadcasts. MCP agents never broadcast.
 
-| Item | Testnet (default) | Mainnet (`network: "mainnet"`) |
+| Item | Mainnet (default) | Testnet (`network: "testnet"`) |
 | --- | --- | --- |
-| Chain | Robinhood Chain testnet | Robinhood Chain mainnet |
-| Chain ID | `46630` | `4663` |
+| Chain | Robinhood Chain mainnet | Robinhood Chain testnet |
+| Chain ID | `4663` | `46630` |
 | API | `https://api.aureonlabs.network` | `https://api.aureonlabs.network` |
-| Cash park | Testnet catalog (see API) | USDG |
-| Explorer | `https://explorer.testnet.chain.robinhood.com` | `https://robinhoodchain.blockscout.com` |
-| Utility | [app.aureonlabs.network](https://app.aureonlabs.network) | [app.aureonlabs.network](https://app.aureonlabs.network) |
+| Cash park | USDG | Testnet catalog (see API) |
+| Explorer | `https://robinhoodchain.blockscout.com` | `https://explorer.testnet.chain.robinhood.com` |
+| Utility | Testnet console (Living Capital cutover next) | [app.aureonlabs.network](https://app.aureonlabs.network) |
 
-The official host still serves chain 46630 until that deployment is cut over. Confirm live addresses from the API you actually call.
+Confirm live addresses from the API you actually call. Public Living Capital is still the testnet console.
 
 ---
 
