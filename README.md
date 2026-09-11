@@ -11,7 +11,7 @@ Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.8-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.10-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -170,15 +170,15 @@ flowchart TB
 
 ## Networks
 
-Omitted `network` / omitted `baseUrl` is **local mainnet**: Robinhood Chain **4663**, API `http://127.0.0.1:8788`, explorer [robinhoodchain.blockscout.com](https://robinhoodchain.blockscout.com). Cash on this path parks in **USDG**. Pass `network: "testnet"` (or `AUREON_NETWORK=testnet`) for the public host `https://api.aureonlabs.network`, which remains Robinhood Chain **testnet 46630**. An explicit `baseUrl` still wins; a mismatched `network` and URL throws.
+Omitted `network` / omitted `baseUrl` uses the official API `https://api.aureonlabs.network` on Robinhood Chain **mainnet**. Pass `network: "testnet"` (or `AUREON_NETWORK=testnet`) to stay on testnet on the same official host. Set `baseUrl` / `AUREON_API_URL` only to override that host.
 
-The public host is not chain 4663 until that host is cut over. Issue developer keys on the **same** API the client will call. First use matches testnet: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
+Public Living Capital at [app.aureonlabs.network](https://app.aureonlabs.network) is still the testnet console. SDK and MCP omit `network` / `AUREON_NETWORK` and send `X-Aureon-Network: mainnet`. Pass `testnet` to stay on testnet. Issue developer keys at that console. First use: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
 
-| | Mainnet (default) | Testnet (opt-in) |
+| | Mainnet (default) | Testnet (`network: "testnet"`) |
 | --- | --- | --- |
 | Chain ID | 4663 | 46630 |
-| API | `http://127.0.0.1:8788` | `https://api.aureonlabs.network` |
-| Utility | Living Capital on `http://127.0.0.1:5174` | [app.aureonlabs.network](https://app.aureonlabs.network) |
+| API | `https://api.aureonlabs.network` | `https://api.aureonlabs.network` |
+| Utility | Testnet console (Living Capital cutover next) | [app.aureonlabs.network](https://app.aureonlabs.network) |
 
 ---
 
@@ -350,9 +350,8 @@ async function run() {
   const aureon = createAureonClient({
     apiKey: process.env.AUREON_API_KEY!, // issued key from Developers console
   });
-  // Default network is mainnet (4663 / http://127.0.0.1:8788).
-  // Opt in to testnet: createAureonClient({ network: "testnet", apiKey })
-  // Public api.aureonlabs.network is still chain 46630.
+  // Default: official API https://api.aureonlabs.network (mainnet).
+  // Testnet: createAureonClient({ network: "testnet", apiKey })
 
   const me = await aureon.me();
   console.log("wallet", me.walletAddress);
@@ -542,8 +541,8 @@ await aureon.revokeApiKey(newKey.id);
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `network` | `"mainnet" \| "testnet"` | `"mainnet"` | Bundles chain + API. Mainnet is 4663 / local 8788. Testnet is optional (public host, still 46630). |
-| `baseUrl` | `string` | mainnet `http://127.0.0.1:8788` | Explicit URL still wins. Must not disagree with `network`. |
+| `network` | `"mainnet" \| "testnet"` | `"mainnet"` | Chain selector on the official API. Omit for mainnet. Pass `"testnet"` to stay on testnet. |
+| `baseUrl` | `string` | `https://api.aureonlabs.network` | Leave unset. Override only if you must point at another host. |
 | `apiKey` | `string` | `undefined` | Sent as `X-Aureon-Api-Key` |
 | `authToken` | `string` | `undefined` | Static JWT bearer |
 | `getAccessToken` | `() => string \| null` | `undefined` | Dynamic bearer resolver |
@@ -656,7 +655,7 @@ Long-form technical docs live under `docs/`:
 | [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
 | [docs/security.md](docs/security.md) | API key and token guidance |
 | [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
-| [CHANGELOG.md](CHANGELOG.md) | Published versions, including 0.1.8 networks and first-use |
+| [CHANGELOG.md](CHANGELOG.md) | Published versions, including 0.1.10 mainnet default |
 
 ---
 
