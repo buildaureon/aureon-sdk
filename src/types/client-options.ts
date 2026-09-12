@@ -7,8 +7,8 @@ import { API_KEY_HEADER } from "../constants/defaults.js";
 
 export interface AureonClientOptions {
   /**
-   * Chain selector. Omit for the official API on testnet (46630).
-   * Pass `"mainnet"` for chain 4663 on the same official host.
+   * Chain selector. Omit for the official API on mainnet.
+   * Pass `"testnet"` to stay on testnet on the same official host.
    */
   network?: "mainnet" | "testnet";
   /**
