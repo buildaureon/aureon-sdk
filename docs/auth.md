@@ -41,8 +41,8 @@ import { createAureonClient } from "@buildaureon/sdk";
 
 const aureon = createAureonClient({
   apiKey: process.env.AUREON_API_KEY!, // issued key from Developers
-  // omit network → official API / testnet 46630
-  // network: "mainnet" → chain 4663 on the same official host
+  // omit network → official API / mainnet
+  // network: "testnet" → stay on testnet on the same official host
 });
 
 const me = await aureon.me();
@@ -89,7 +89,7 @@ import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk
 
 const session = createSessionTokenProvider(null);
 const aureon = createAureonClient({
-  network: "testnet", // public host, still chain 46630
+  network: "testnet", // opt-in testnet, chain 46630
   apiKey: process.env.AUREON_API_KEY,
   getAccessToken: session.getAccessToken,
 });
@@ -144,7 +144,7 @@ session.clear();
 | Variable | Required | Description |
 | --- | --- | --- |
 | `AUREON_API_KEY` | Recommended | Issued developer key |
-| `AUREON_NETWORK` | No | Omit for official API / testnet 46630. Set `mainnet` for chain 4663. |
+| `AUREON_NETWORK` | No | Omit for official API / mainnet. Set `testnet` to stay on testnet. |
 | `AUREON_API_URL` | No | Optional override of `https://api.aureonlabs.network`. |
 | `AUREON_TOKEN` | No | Optional Bearer for CLI / scripts |
 
