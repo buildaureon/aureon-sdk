@@ -8,8 +8,8 @@ import { AureonClient } from "./aureon-client.js";
 
 /**
  * Factory for integrators. Omit `baseUrl` to use the official API
- * (https://api.aureonlabs.network). Optional `network` selects chain
- * (`testnet` 46630 by default, or `mainnet` 4663).
+ * (https://api.aureonlabs.network). Omit `network` for mainnet. Pass
+ * `network: "testnet"` to stay on testnet on the same host.
  */
 export function createAureonClient(
   options: AureonClientOptions = {}
