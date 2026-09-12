@@ -3,7 +3,7 @@
  *
  * Env (required for integrators — nothing else):
  *   AUREON_API_KEY     issued key from Developers
- *   AUREON_NETWORK     optional; omit for official API / testnet 46630; set mainnet for chain 4663
+ *   AUREON_NETWORK     optional; omit for official API / mainnet; set testnet to stay on testnet
  *   AUREON_API_URL     optional override (must match network if both set)
  *
  *   pnpm --filter @buildaureon/sdk example:quickstart
