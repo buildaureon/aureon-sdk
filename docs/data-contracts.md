@@ -579,7 +579,9 @@ export interface VaultPrepareResult {
 }
 ```
 
-#### JSON Representation Example
+#### JSON Representation Example (testnet sample)
+
+Labeled testnet: `chainId` 46630. Confirm live addresses from the API you actually call.
 ```json
 {
   "chainId": 46630,
