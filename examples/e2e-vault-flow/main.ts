@@ -3,7 +3,7 @@
  *
  * Env (integrators only — no local repo files):
  *   AUREON_API_KEY            issued developer key (required)
- *   AUREON_NETWORK            optional; omit for official API / testnet 46630; mainnet = chain 4663
+ *   AUREON_NETWORK            optional; omit for official API / mainnet; testnet = stay on testnet
  *   AUREON_API_URL            optional override
  *   AUREON_WALLET_PRIVATE_KEY 0x… key used to sign auth + broadcast vault txs (required)
  *   AUREON_RPC_URL            optional (defaults from resolved chain)
