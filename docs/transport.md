@@ -48,8 +48,8 @@ Issued developer keys in `X-Aureon-Api-Key` are enough for control-plane identit
 
 ```ts
 createAureonClient({
-  // omit network → official API / testnet 46630
-  // network: "mainnet" → chain 4663 on the same official host
+  // omit network → official API / mainnet
+  // network: "testnet" → stay on testnet on the same official host
   apiKey: process.env.AUREON_API_KEY!,
   timeoutMs: 30_000,   // per attempt
   maxRetries: 2,        // extra attempts after first failure
