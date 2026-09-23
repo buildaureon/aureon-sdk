@@ -579,20 +579,20 @@ export interface VaultPrepareResult {
 }
 ```
 
-#### JSON Representation Example (testnet sample)
+#### JSON Representation Example (mainnet shape)
 
-Labeled testnet: `chainId` 46630. Confirm live addresses from the API you actually call.
+Default product network is mainnet `chainId` **4663**. Confirm live vault and token addresses from the API you actually call. Opt-in testnet uses `46630` on the same official host.
 ```json
 {
-  "chainId": 46630,
+  "chainId": 4663,
   "vaultAddress": "0x1234567890123456789012345678901234567890",
-  "explorerBase": "https://explorer.robinhoodnet.org",
+  "explorerBase": "https://robinhoodchain.blockscout.com",
   "symbol": "WETH",
   "amountRaw": "1000000000000000000",
   "amountHuman": "1.0",
   "steps": [
     {
-      "to": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "to": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
       "data": "0x095cae9a0000000000000000000000001234567890123456789012345678901234567890ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
       "value": "0",
       "functionName": "approve",
