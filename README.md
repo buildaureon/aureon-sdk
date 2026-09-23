@@ -11,7 +11,7 @@ Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.10-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.11-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -306,13 +306,15 @@ sequenceDiagram
   API-->>Client: Watchdog status and breach reports
 ```
 
-Typical operator loop in prose:
+Typical Living Capital loop in prose:
 
-1. **Define capital** — sync the Capital Book from chain or seed an explicit book for rehearsal.
-2. **Register policy** — create a Financial Compass objective with target weight and tolerance.
-3. **Observe** — poll health and timeline; refresh the watchdog after market moves.
-4. **Restore** — fetch the plan, execute restore, read `settlement` on the receipt.
-5. **Verify** — confirm health returns to healthy and the timeline shows the restore event.
+1. **Connect** — wallet session (and optional developer API key for scripts).
+2. **Fund** — `prepareVaultDeposit` returns unsigned steps; the host wallet broadcasts. Empty vault → Automatic restore returns **409**.
+3. **Register policy** — create an Automatic objective (e.g. keep ~20% of a named token within tolerance).
+4. **Watch** — `refreshWatchdog` / `getHealth` / `getAllocationVsTarget` while markets move.
+5. **Maintain** — when off-plan, `getRestorePlan` then `restoreObjective` (or `runExecution`). The vault sells overweight sleeves and buys the underweight target. Venue routing stays on the API side.
+6. **Prove** — read `settlement`, `verifiedOnChain`, and `explorerUrl` on the receipt. Only vault + verified is final on-chain proof.
+7. **Exit** — `prepareVaultWithdraw`; host wallet broadcasts.
 
 ---
 
