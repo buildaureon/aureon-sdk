@@ -5,7 +5,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  AureonClient,
   LOCAL_API_BASE_URL,
   MAINNET_CHAIN_ID,
   OFFICIAL_API_BASE_URL,
