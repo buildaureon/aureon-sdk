@@ -4,7 +4,10 @@
  * Usage:
  *   AUREON_API_KEY=aur_... npx tsx examples/registry-register/main.ts
  */
-import { createAureonClient } from "../../src/client/factory.js";
+import {
+  createAureonClient,
+  resolveAureonNetworkFromEnv,
+} from "../../src/index.js";
 
 async function main() {
   const apiKey = process.env.AUREON_API_KEY?.trim();
@@ -13,11 +16,16 @@ async function main() {
     process.exit(1);
   }
 
-  const client = createAureonClient({ apiKey });
+  const resolved = resolveAureonNetworkFromEnv();
+  const client = createAureonClient({
+    network: resolved.network,
+    baseUrl: resolved.baseUrl,
+    apiKey,
+  });
   const status = await client.getRegistryStatus();
   console.log("registry status", status);
 
-  const { objectives } = await client.listObjectives();
+  const objectives = await client.listObjectives();
   const target = objectives[0];
   if (!target) {
     console.error("Create an objective first");
