@@ -11,7 +11,7 @@ Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.11-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.13-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -172,13 +172,13 @@ flowchart TB
 
 Omitted `network` / omitted `baseUrl` uses the official API `https://api.aureonlabs.network` on Robinhood Chain **mainnet**. Pass `network: "testnet"` (or `AUREON_NETWORK=testnet`) to stay on testnet on the same official host. Set `baseUrl` / `AUREON_API_URL` only to override that host.
 
-Public Living Capital at [app.aureonlabs.network](https://app.aureonlabs.network) is still the testnet console. SDK and MCP omit `network` / `AUREON_NETWORK` and send `X-Aureon-Network: mainnet`. Pass `testnet` to stay on testnet. Issue developer keys at that console. First use: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
+The operator app at [app.aureonlabs.network](https://app.aureonlabs.network) is the mainnet console. Issue developer keys there. SDK and MCP omit `network` / `AUREON_NETWORK` and send `X-Aureon-Network: mainnet`. Pass `testnet` to stay on testnet, chain **46630**. First use: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
 
 | | Mainnet (default) | Testnet (`network: "testnet"`) |
 | --- | --- | --- |
 | Chain ID | 4663 | 46630 |
 | API | `https://api.aureonlabs.network` | `https://api.aureonlabs.network` |
-| Utility | Testnet console (Living Capital cutover next) | [app.aureonlabs.network](https://app.aureonlabs.network) |
+| Utility | [app.aureonlabs.network](https://app.aureonlabs.network) | Same host with `network: "testnet"` |
 
 ---
 
@@ -657,7 +657,7 @@ Long-form technical docs live under `docs/`:
 | [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
 | [docs/security.md](docs/security.md) | API key and token guidance |
 | [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
-| [CHANGELOG.md](CHANGELOG.md) | Published versions, including 0.1.10 mainnet default |
+| [CHANGELOG.md](CHANGELOG.md) | Published versions, including 0.1.13 mainnet console docs |
 
 ---
 
