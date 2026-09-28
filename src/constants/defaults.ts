@@ -11,7 +11,7 @@ export const DEFAULT_API_BASE_URL = OFFICIAL_API_BASE_URL;
 export const LOCAL_API_BASE_URL = "http://127.0.0.1:8788";
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
-export const SDK_VERSION = "0.1.10";
+export const SDK_VERSION = "0.1.13";
 export const SDK_NAME = "@buildaureon/sdk";
 export const PRODUCT_NAME = "AUREON";
 export const PRODUCT_TAGLINE =
