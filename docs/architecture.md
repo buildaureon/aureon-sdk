@@ -195,9 +195,9 @@ Default omitted SDK/MCP options use the official API `https://api.aureonlabs.net
 | API | `https://api.aureonlabs.network` | `https://api.aureonlabs.network` |
 | Cash park | USDG | Testnet catalog (see API) |
 | Explorer | `https://robinhoodchain.blockscout.com` | `https://explorer.testnet.chain.robinhood.com` |
-| Utility | Testnet console (Living Capital cutover next) | [app.aureonlabs.network](https://app.aureonlabs.network) |
+| Utility | [app.aureonlabs.network](https://app.aureonlabs.network) | Same host with `network: "testnet"` |
 
-Confirm live addresses from the API you actually call. Public Living Capital is still the testnet console.
+Confirm live addresses from the API you actually call. The operator app is the mainnet console. Testnet is opt-in.
 
 ---
 
