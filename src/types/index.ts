@@ -30,6 +30,14 @@ export type { HealthState, ObjectiveHealth } from "./health.js";
 export { healthRank, isHealthState, pickWorstHealth } from "./health.js";
 
 export type { TimelineEvent, TimelineEventType } from "./timeline.js";
+export type {
+  DecisionAction,
+  DecisionRecord,
+  TimelinePage,
+  PortfolioHistoryPoint,
+  HealthHistoryPoint,
+  FinancialReport,
+} from "./history.js";
 export {
   TIMELINE_EVENT_TYPES,
   filterTimelineByObjective,
