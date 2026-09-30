@@ -1,5 +1,5 @@
 /**
- * @fileoverview Phase 2 ObjectiveRegistry types.
+ * @fileoverview ObjectiveRegistry types.
  */
 
 export type RegistryStatus = {
