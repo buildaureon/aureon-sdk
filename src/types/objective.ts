@@ -11,7 +11,7 @@ export type ObjectiveStatus =
   | "cancelled"
   | "completed";
 
-/** Supported objective kinds for Phase 1 operator workflows. */
+/** Supported objective kinds. */
 export type ObjectiveKind =
   | "stable_allocation"
   | "balanced_portfolio"
@@ -84,6 +84,8 @@ export interface CreateObjectiveInput {
    * The operator utility may still pass `"manual"` for Approve UX.
    */
   automationMode?: ObjectiveAutomationMode;
+  /** Optional note stored with the decision record. Empty is ignored. */
+  reason?: string;
 }
 
 /** Partial update for an existing objective. */
@@ -104,6 +106,8 @@ export interface UpdateObjectiveInput {
    * Recreate the objective to switch Manual ↔ Automatic.
    */
   automationMode?: never;
+  /** Optional note stored with the decision record. Empty is ignored. */
+  reason?: string;
 }
 
 export const OBJECTIVE_KINDS: readonly ObjectiveKind[] = [
