@@ -24,6 +24,9 @@ import {
   objectivePath,
   objectivePausePath,
   objectiveResumePath,
+  objectiveDecisionsPath,
+  decisionPath,
+  reportPath,
   objectiveRestorePath,
   objectiveRestorePlanPath,
   registryObjectivePath,
@@ -120,6 +123,13 @@ import type {
 } from "../types/vault.js";
 import type { WatchdogRefreshResult } from "../types/watchdog.js";
 import type { TimelineEvent } from "../types/timeline.js";
+import type {
+  DecisionRecord,
+  FinancialReport,
+  HealthHistoryPoint,
+  PortfolioHistoryPoint,
+  TimelinePage,
+} from "../types/history.js";
 import { normalizeApplyMarketEventInput } from "../validation/market-input.js";
 import {
   assertId,
@@ -377,18 +387,28 @@ export class AureonClient {
   }
 
   /** Pauses continuous evaluation for an objective. Auth required. */
-  async pauseObjective(id: string): Promise<Objective> {
+  async pauseObjective(
+    id: string,
+    input?: { reason?: string }
+  ): Promise<Objective> {
     assertId(id, "objective id");
+    const reason = input?.reason?.trim();
     return requestJson(this.transport, objectivePausePath(id), {
       method: "POST",
+      body: reason ? { reason } : undefined,
     });
   }
 
   /** Resumes evaluation for a paused objective. Auth required. */
-  async resumeObjective(id: string): Promise<Objective> {
+  async resumeObjective(
+    id: string,
+    input?: { reason?: string }
+  ): Promise<Objective> {
     assertId(id, "objective id");
+    const reason = input?.reason?.trim();
     return requestJson(this.transport, objectiveResumePath(id), {
       method: "POST",
+      body: reason ? { reason } : undefined,
     });
   }
 
@@ -410,6 +430,106 @@ export class AureonClient {
       path
     );
     return result.events;
+  }
+
+  /**
+   * Next page of timeline events. `before` is an event id from a previous page.
+   * Auth required.
+   */
+  async getTimelinePage(input?: {
+    objectiveId?: string;
+    before?: string;
+    limit?: number;
+  }): Promise<TimelinePage> {
+    const path = withQuery(ENDPOINTS.timeline, {
+      objectiveId: input?.objectiveId,
+      before: input?.before,
+      limit:
+        input?.limit === undefined ? undefined : String(input.limit),
+    });
+    return requestJson<TimelinePage>(this.transport, path);
+  }
+
+  /** Decision records for the wallet, newest first. Auth required. */
+  async listDecisions(objectiveId?: string): Promise<DecisionRecord[]> {
+    const path = objectiveId
+      ? objectiveDecisionsPath(objectiveId)
+      : ENDPOINTS.decisions;
+    const result = await requestJson<{ decisions: DecisionRecord[] }>(
+      this.transport,
+      path
+    );
+    return result.decisions;
+  }
+
+  /** One decision record by id. Auth required. */
+  async getDecision(id: string): Promise<DecisionRecord> {
+    assertId(id, "decision id");
+    return requestJson(this.transport, decisionPath(id));
+  }
+
+  /** Stored daily portfolio totals. Auth required. */
+  async getPortfolioHistory(): Promise<PortfolioHistoryPoint[]> {
+    const result = await requestJson<{ points: PortfolioHistoryPoint[] }>(
+      this.transport,
+      ENDPOINTS.portfolioHistory
+    );
+    return result.points;
+  }
+
+  /** Stored health score samples. Auth required. */
+  async getHealthHistory(): Promise<HealthHistoryPoint[]> {
+    const result = await requestJson<{ points: HealthHistoryPoint[] }>(
+      this.transport,
+      ENDPOINTS.healthHistory
+    );
+    return result.points;
+  }
+
+  /**
+   * Builds a report from stored rows and returns the message to sign.
+   * Does not broadcast a transaction. Auth required.
+   */
+  async prepareReport(objectiveId: string): Promise<FinancialReport> {
+    assertId(objectiveId, "objective id");
+    return requestJson(this.transport, ENDPOINTS.reportsPrepare, {
+      method: "POST",
+      body: { objectiveId },
+    });
+  }
+
+  /**
+   * Stores a wallet signature for a prepared report after it recovers
+   * to the session wallet. Does not broadcast. Auth required.
+   */
+  async confirmReport(input: {
+    reportId: string;
+    message: string;
+    signature: string;
+  }): Promise<FinancialReport> {
+    assertId(input.reportId, "report id");
+    if (!input.message?.trim() || !input.signature?.trim()) {
+      throw new AureonValidationError("message and signature are required");
+    }
+    return requestJson(this.transport, ENDPOINTS.reportsConfirm, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  /** Stored reports for the wallet. Auth required. */
+  async listReports(): Promise<FinancialReport[]> {
+    const result = await requestJson<{ reports: FinancialReport[] }>(
+      this.transport,
+      ENDPOINTS.reports
+    );
+    return result.reports;
+  }
+
+  /** One stored report. Auth required. */
+  async getReport(id: string): Promise<FinancialReport> {
+    assertId(id, "report id");
+    return requestJson(this.transport, reportPath(id));
   }
 
   /** Returns the current portfolio snapshot for the wallet. Auth required. */
@@ -1138,7 +1258,7 @@ export class AureonClient {
     });
   }
 
-  /** Returns Phase 2 ObjectiveRegistry deployment status. Auth required. */
+  /** Returns ObjectiveRegistry deployment status. Auth required. */
   async getRegistryStatus(): Promise<RegistryStatus> {
     return requestJson(this.transport, ENDPOINTS.registryStatus);
   }
