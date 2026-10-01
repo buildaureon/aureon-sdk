@@ -12,6 +12,12 @@ export const ENDPOINTS = {
   objectives: "/objectives",
   health: "/health",
   timeline: "/timeline",
+  decisions: "/decisions",
+  portfolioHistory: "/portfolio/history",
+  healthHistory: "/health/history",
+  reports: "/reports",
+  reportsPrepare: "/reports/prepare",
+  reportsConfirm: "/reports/confirm",
   executions: "/executions",
   executionsRun: "/executions/run",
   marketEvents: "/market/events",
@@ -40,6 +46,18 @@ export function objectivePausePath(id: string): string {
 
 export function objectiveResumePath(id: string): string {
   return `${objectivePath(id)}/resume`;
+}
+
+export function objectiveDecisionsPath(id: string): string {
+  return `${objectivePath(id)}/decisions`;
+}
+
+export function decisionPath(id: string): string {
+  return `${ENDPOINTS.decisions}/${encodeURIComponent(id)}`;
+}
+
+export function reportPath(id: string): string {
+  return `${ENDPOINTS.reports}/${encodeURIComponent(id)}`;
 }
 
 export function objectiveRestorePlanPath(id: string): string {
