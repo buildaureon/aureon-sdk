@@ -1,5 +1,5 @@
 /**
- * @fileoverview Portfolio watch while away — agent-in-host teaching flow (Update 6).
+ * @fileoverview Portfolio watch while away — agent-in-host teaching flow.
  */
 
 import type { AllocationComparisonRow } from "./allocation.js";
@@ -17,7 +17,7 @@ export type PortfolioWatchPhase =
   | "while_away"
   | "return_briefing";
 
-/** Default consumer brief for Update 6 demos. */
+/** Default consumer brief for the portfolio-watch demo. */
 export const DEFAULT_PORTFOLIO_WATCH_BRIEF =
   "Watch my portfolio while I'm away — keep about 20% in stable assets.";
 
