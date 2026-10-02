@@ -1,5 +1,5 @@
 /**
- * @fileoverview Phase 2 audit trail export — objective → proof.
+ * @fileoverview Audit trail export — objective → proof.
  *
  * Env:
  *   AUREON_API_KEY  issued developer key (required)
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
 
   const trail = await aureon.getAuditTrail(objectiveId);
 
-  console.log("\n=== AUREON Phase 2 — Financial audit trail ===\n");
+  console.log("\n=== AUREON — Financial audit trail ===\n");
   for (const line of formatAuditTrailLines(trail)) {
     console.log(line);
   }
