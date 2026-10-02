@@ -1,6 +1,8 @@
 # Architecture Guide
 
-System architecture for AUREON and how `@buildaureon/sdk` fits as the typed client for Automatic agent workflows.
+System architecture for AUREON and how `@buildaureon/sdk` `0.1.14` fits as the typed client for Automatic agent workflows.
+
+The health payload field `version` is the API (`0.2.1` in this tree). It is not the SDK version.
 
 **Automation note:** The SDK is built for **Automatic** objectives (`automationMode: "auto"`). Manual Approve operator flows are handled in the utility, not as the primary SDK architecture.
 
@@ -75,8 +77,8 @@ graph TB
 
 | Piece | Role |
 | --- | --- |
-| API | Objectives, portfolio sync, vault prepare, restore, timeline |
-| Ledger | Objectives, health snapshots, receipts, events |
+| API | Objectives, portfolio sync, vault prepare, restore, timeline, decision records, stored history, signed reports |
+| Ledger | Objectives, health snapshots, daily portfolio totals, decision records, signed reports, receipts, events |
 | Marks | Price inputs for weight math |
 | Health engine | Compares weights / risk to policy |
 | Watchdog | Heartbeat evaluation across active Auto objectives |
