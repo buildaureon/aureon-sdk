@@ -1,5 +1,5 @@
 /**
- * Phase 2 — prepare on-chain objective registration (wallet signs broadcast).
+ * Prepare on-chain objective registration (wallet signs the broadcast).
  *
  * Usage:
  *   AUREON_API_KEY=aur_... npx tsx examples/registry-register/main.ts
