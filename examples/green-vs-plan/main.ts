@@ -1,5 +1,5 @@
 /**
- * @fileoverview Update 2 demo — green portfolio vs failing financial plan.
+ * @fileoverview Green portfolio vs a failing financial plan.
  *
  * Shows objective vs actual before and after a controlled NVDA rally with
  * auto-restore disabled so the paradox stays visible.
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     apiKey,
   });
 
-  console.log("\n=== AUREON Update 2 — Green vs plan ===\n");
+  console.log("\n=== AUREON — Green vs plan ===\n");
 
   console.log("1. Seed capital book (~20% stables)…");
   await aureon.setPortfolio(DEMO_POSITIONS);
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   console.log("4. Apply NVDA rally (+45%), autoRestore: false…");
   const market = await aureon.applyMarketEvent({
     name: "NVDA Stock Token Rally",
-    description: "Controlled mark move — Update 2 paradox demo",
+    description: "Controlled mark move — green vs plan demo",
     symbol: "NVDA",
     priceChangeRatio: 0.45,
     autoRestore: false,
