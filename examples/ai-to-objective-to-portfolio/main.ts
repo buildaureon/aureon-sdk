@@ -1,5 +1,5 @@
 /**
- * @fileoverview Update 3 demo — AI → objective → portfolio.
+ * @fileoverview AI → objective → portfolio.
  *
  * Env:
  *   AUREON_API_KEY  issued developer key (required)
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   const userBrief =
     "I want to keep about 20% of my portfolio in stable assets.";
 
-  console.log("\n=== AUREON Update 3 — AI → objective → portfolio ===\n");
+  console.log("\n=== AUREON — AI → objective → portfolio ===\n");
   console.log("USER (simulated agent input):");
   console.log(`  "${userBrief}"\n`);
 
