@@ -11,7 +11,7 @@ Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.13-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.14-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -111,7 +111,9 @@ flowchart LR
 | Authenticate a wallet session (optional nonce → sign) | `getAuthNonce`, `verifyWallet`, `createSessionTokenProvider` |
 | Sync and manage the Capital Book | `syncPortfolio`, `setPortfolio`, `clearPortfolio` |
 | Create and query Financial Compass objectives | `createObjective`, `listObjectives`, `getObjective` |
-| Read health, timeline, and overview | `getHealth`, `getTimeline`, `getOverview`, `refreshWatchdog` |
+| Read health, timeline, and overview | `getHealth`, `getTimeline`, `getTimelinePage`, `getOverview`, `refreshWatchdog` |
+| Read decision records and stored history | `listDecisions`, `getDecision`, `getPortfolioHistory`, `getHealthHistory` |
+| Prepare and confirm a wallet-signed report | `prepareReport`, `confirmReport`, `listReports`, `getReport` |
 | Prepare non-custodial vault deposit / withdraw steps | `prepareVaultDeposit`, related vault helpers |
 | Fetch and execute restore plans | `getRestorePlan`, `restoreObjective` |
 | Apply controlled market events for integration rehearsal | `applyMarketEvent` |
@@ -657,7 +659,7 @@ Long-form technical docs live under `docs/`:
 | [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
 | [docs/security.md](docs/security.md) | API key and token guidance |
 | [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
-| [CHANGELOG.md](CHANGELOG.md) | Published versions, including 0.1.13 mainnet console docs |
+| [CHANGELOG.md](CHANGELOG.md) | Published versions. `0.1.14` adds financial history. The API health `version` is the API, not this package. |
 
 ---
 
