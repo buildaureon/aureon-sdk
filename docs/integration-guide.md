@@ -165,7 +165,7 @@ Start with one Automatic `balanced_portfolio` objective and a funded vault befor
 
 ---
 
-## 2b. Green vs plan paradox demo (Update 2)
+## 2b. Green vs plan paradox demo 
 
 Most dashboards celebrate green PnL. AUREON separates book performance from plan adherence:
 
@@ -190,7 +190,7 @@ Run the full script: `pnpm example:green-vs-plan` (requires `AUREON_API_KEY`).
 
 ---
 
-## 2c. AI → objective → portfolio (Update 3)
+## 2c. AI → objective → portfolio
 
 Most AI agents can transact but forget what the user wanted. AUREON registers intent as a persistent objective, then reads the portfolio through that policy:
 
@@ -212,13 +212,13 @@ For demos, `parseFinancialIntent(brief)` converts a user sentence into structure
 
 Run the full script: `pnpm example:ai-to-objective-to-portfolio`.
 
-Then use `getAllocationVsTarget()` (Update 2) to compare objective vs actual over time.
+Then use `getAllocationVsTarget()` to compare objective vs actual over time.
 
 ---
 
-## 2d. Drift → detection → restore (Update 4)
+## 2d. Drift → detection → restore
 
-Update 2 stops at the paradox — book up, plan off-target, no restore. Update 4 closes the loop:
+The green-vs-plan demo stops at the paradox: the book is up, the plan is off-target, and nothing restores. Drift detection closes that loop:
 
 ```ts
 const flow = await aureon.runDriftRestoreDemo();
@@ -236,9 +236,9 @@ Run the full script: `pnpm example:drift-detect-restore`.
 
 ---
 
-## 2e. Receipt → verification (Update 5)
+## 2e. Receipt → verification
 
-Update 4 returns a receipt after restore. Update 5 teaches that **"transaction successful" is a claim**, not proof:
+A restore returns a receipt. **"Transaction successful" is a claim**, not proof:
 
 ```ts
 const flow = await aureon.runReceiptVerificationDemo();
@@ -256,11 +256,11 @@ For read-only checks on existing executions, use `getReceiptVerificationFlow(exe
 
 Run the full script: `pnpm example:receipt-verification`.
 
-Forward link: Update 6 — Claude/Cursor + AUREON agent-in-host demo.
+Next: portfolio watch, an agent host watching the book while the operator is away.
 
 ---
 
-## 2f. Portfolio watch while away (Update 6)
+## 2f. Portfolio watch while away
 
 Consumer hook: *“Imagine telling your AI: watch my portfolio while I'm away.”*
 
@@ -275,17 +275,17 @@ for (const line of flow.phases.briefing.summaryLines) {
 }
 ```
 
-Update 4 uses `autoRestore: false` (manual restore demo). Update 6 uses **`autoRestore: true`** — Automatic mode acts while the operator is away.
+The drift demo uses `autoRestore: false`, so the operator restores by hand. Portfolio watch uses **`autoRestore: true`**. Automatic mode acts while the operator is away.
 
 For read-only briefing on existing Automatic objectives: `getPortfolioWatchFlow()`.
 
 Run the full script: `pnpm example:portfolio-watch`.
 
-Forward link: Update 7 — full AUREON loop.
+Next: the full loop, from intent through receipt verification.
 
 ---
 
-## 2g. Full AUREON loop (Update 7)
+## 2g. Full loop
 
 Positioning hook: *"We're not building another portfolio tracker."*
 
