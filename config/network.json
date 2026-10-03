@@ -16,5 +16,5 @@
     "explorer": "https://explorer.testnet.chain.robinhood.com"
   },
   "sdkPackage": "@buildaureon/sdk",
-  "sdkVersion": "0.1.13"
+  "sdkVersion": "0.1.14"
 }
