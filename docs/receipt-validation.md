@@ -1,6 +1,6 @@
 # Receipt validation
 
-Phase 2 receipts must follow honest settlement rules. Use the SDK validator after every restore or when ingesting receipts from logs.
+Receipts must follow honest settlement rules. Use the SDK validator after every restore or when ingesting receipts from logs.
 
 ---
 
