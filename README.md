@@ -11,7 +11,7 @@ Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.14-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.15-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -659,7 +659,7 @@ Long-form technical docs live under `docs/`:
 | [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
 | [docs/security.md](docs/security.md) | API key and token guidance |
 | [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
-| [CHANGELOG.md](CHANGELOG.md) | Published versions. `0.1.14` adds financial history. The API health `version` is the API, not this package. |
+| [CHANGELOG.md](CHANGELOG.md) | Published versions. `0.1.15` adds unsigned restoration. `0.1.14` added financial history. The API health `version` is the API, not this package. |
 
 ---
 
