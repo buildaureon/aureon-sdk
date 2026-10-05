@@ -11,6 +11,9 @@ export type {
   ObjectiveStatus,
   CreateObjectiveInput,
   UpdateObjectiveInput,
+  WeightBound,
+  RestorationProposal,
+  RestorationStep,
 } from "./objective.js";
 export {
   OBJECTIVE_KINDS,
