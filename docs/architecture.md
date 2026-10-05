@@ -1,6 +1,6 @@
 # Architecture Guide
 
-System architecture for AUREON and how `@buildaureon/sdk` `0.1.14` fits as the typed client for Automatic agent workflows.
+System architecture for AUREON and how `@buildaureon/sdk` `0.1.15` fits as the typed client for Automatic agent workflows.
 
 The health payload field `version` is the API (`0.2.1` in this tree). It is not the SDK version.
 
