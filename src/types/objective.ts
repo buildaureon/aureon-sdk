@@ -30,12 +30,23 @@ export type ObjectivePriority = "low" | "medium" | "high" | "critical";
  */
 export type ObjectiveAutomationMode = "manual" | "auto";
 
+/**
+ * ceiling: health misses only above targetWeight.
+ * floor: health misses only below targetWeight.
+ * target: health misses on both sides.
+ */
+export type WeightBound = "ceiling" | "floor" | "target";
+
 /** Policy rules attached to an objective. */
 export interface ObjectivePolicy {
   targetWeight: number;
   tolerance: number;
   maxRiskScore?: number;
   reinvestRatio?: number;
+  /** Fraction of the notional above the sleeve cap to sell. Not a full rebalance. */
+  profitTakeRatio?: number;
+  /** ceiling, floor, or target. Omitted responses from older APIs mean target. */
+  weightBound?: WeightBound;
   /** Holding symbol when the objective tracks a specific asset weight. */
   targetSymbol?: string;
   summary: string;
@@ -78,6 +89,10 @@ export interface CreateObjectiveInput {
   tolerance: number;
   maxRiskScore?: number;
   reinvestRatio?: number;
+  /** Fraction of the notional above the sleeve cap to sell. Not a full rebalance. */
+  profitTakeRatio?: number;
+  /** ceiling, floor, or target. Omit for the two-sided target check. */
+  weightBound?: WeightBound;
   targetSymbol?: string | null;
   /**
    * @deprecated For SDK integrations omit this; create always uses Automatic.
@@ -108,6 +123,58 @@ export interface UpdateObjectiveInput {
   automationMode?: never;
   /** Optional note stored with the decision record. Empty is ignored. */
   reason?: string;
+}
+
+export interface RestorationStep {
+  role: "sleeve_profit_take" | "reserve_floor";
+  to: string;
+  data: string;
+  value: "0";
+  functionName: "rebalance";
+  /** Raw buy-token units. Greater than zero. 99% of the mark-implied buy. */
+  minOut: string;
+}
+
+export interface TransactionCheck {
+  valid: boolean;
+  issues: string[];
+}
+
+export interface SleeveRestoration {
+  profitTakeRatio: number;
+  targetWeight: number;
+  currentWeight: number;
+  excessWeight: number;
+  excessNotionalUsd: number;
+  sellNotionalUsd: number;
+  fullReturnToTargetNotionalUsd: number;
+  sellSymbol: string;
+  buySymbol: string;
+  amountHuman: string;
+  conditionMet: boolean;
+}
+
+export interface ReserveRestoration {
+  targetWeight: number;
+  currentWeight: number;
+  weightAfterSleeveSlice: number;
+  floorShortfallUsd: number;
+  sellSymbol: string;
+  buySymbol: string;
+  amountHuman: string;
+  stepRequired: boolean;
+}
+
+/** Unsigned vault steps. transactionHash and sentBy stay null. */
+export interface RestorationProposal {
+  sleeveObjectiveId: string | null;
+  reserveObjectiveId: string | null;
+  sleeve: SleeveRestoration | null;
+  reserve: ReserveRestoration | null;
+  steps: RestorationStep[];
+  transactionCheck: TransactionCheck;
+  transactionHash: null;
+  sentBy: null;
 }
 
 export const OBJECTIVE_KINDS: readonly ObjectiveKind[] = [
