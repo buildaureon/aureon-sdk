@@ -68,6 +68,14 @@ export function objectiveRestorePath(id: string): string {
   return `${objectivePath(id)}/restore`;
 }
 
+export function objectiveProposeRestorationPath(id: string): string {
+  return `${objectivePath(id)}/propose-restoration`;
+}
+
+export function proposeRestorationPath(): string {
+  return `${ENDPOINTS.objectives}/propose-restoration`;
+}
+
 export function developerApiKeyPath(id: string): string {
   return `${ENDPOINTS.developerApiKeys}/${encodeURIComponent(id)}`;
 }
