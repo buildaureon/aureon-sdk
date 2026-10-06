@@ -97,6 +97,8 @@ export type {
   ApplyMarketEventInput,
   AureonClientOptions,
   CreateObjectiveInput,
+  WeightBound,
+  RestorationProposal,
   DashboardOverview,
   ExecutionReceipt,
   RestorePlan,
