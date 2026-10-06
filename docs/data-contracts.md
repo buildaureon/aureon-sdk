@@ -149,7 +149,9 @@ Passed to `createObjective` to register a new rule:
 *   `tolerance` (Required): Number between 0.0 and 0.5.
 *   `priority` (Optional): Defaults to `high`.
 *   `targetSymbol` (Required if kind is `balanced_portfolio`): Token symbol.
-*   `automationMode` (Optional): Defaults to `auto` in the SDK.
+*   `profitTakeRatio` (Optional): Fraction of the notional above a sleeve cap to sell. Not a full return to the cap.
+*   `weightBound` (Optional): `ceiling`, `floor`, or `target`. Omit for the two-sided target check.
+*   `automationMode` (Optional): Defaults to `auto` in the SDK. The unsigned restoration call requires `manual` so the keeper does not send first.
 
 #### `UpdateObjectiveInput`
 Passed to `updateObjective` for partial updates. `targetSymbol` and `automationMode` are fixed at creation and cannot be updated.
