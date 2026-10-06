@@ -207,7 +207,7 @@ async createObjective(input: CreateObjectiveInput): Promise<Objective>
 |--|--|
 | Auth | Required |
 | HTTP | `POST /objectives` |
-| Client validation | Name ≥ 3 chars; kind; `targetWeight` ∈ [0,1]; `tolerance` ∈ [0,0.5]; priority if set |
+| Client validation | Name ≥ 3 chars; kind; `targetWeight` ∈ [0,1]; `tolerance` ∈ [0,0.5]; priority if set; `weightBound` of `ceiling`, `floor`, or `target` if set |
 | Automation | SDK supports **Automatic only**. Defaults **`automationMode: "auto"`**. Omit the field in agent integrations. |
 | `targetSymbol` | Required when `kind === "balanced_portfolio"` (uppercased on normalize). |
 
@@ -667,6 +667,24 @@ async getRestorePlan(objectiveId: string): Promise<RestorePlan>
 | Kinds | `wrap_eth` · `unwrap_weth` · `vault_swap` |
 | Use | Inspect plan before acting, noting that wrap/unwrap is client-side |
 
+### `proposeRestoration(input)`
+
+```ts
+async proposeRestoration(
+  input: string | { sleeveObjectiveId: string; reserveObjectiveId: string }
+): Promise<RestorationProposal>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | `POST /objectives/propose-restoration` with both ids, or `POST /objectives/:id/propose-restoration` with one id |
+| Sizing | Vault balances. The sleeve step sells `profitTakeRatio` of the notional above a `ceiling`. The reserve step lifts stables to a `floor` only when that floor is still missed after the slice. |
+| Broadcast | None. `transactionHash` and `sentBy` are null. `minOut` in the calldata is 0. |
+| Mode | Both objectives are `manual`. `auto` is rejected because keeper restore can send before the steps are checked. |
+
+Create the sleeve with `weightBound: "ceiling"` and `profitTakeRatio`. Create the reserve with `weightBound: "floor"`. Pass `automationMode: "manual"` on both. The host shows `to`, `data`, and `value` to the governor before anyone signs. `aureon_restore_objective` is a different call.
+
 ### `runExecution(objectiveId)`
 
 ```ts
@@ -764,6 +782,7 @@ session.clear();
 | `listMarketPresets` | GET | `/market/presets` | **yes** |
 | `applyMarketEvent` | POST | `/market/events` | **yes** |
 | `getRestorePlan` | GET | `/objectives/:id/restore-plan` | **yes** |
+| `proposeRestoration` | POST | `/objectives/propose-restoration` | **yes** |
 | `restoreObjective` | POST | `/objectives/:id/restore` | **yes** |
 | `runExecution` | POST | `/executions/run` | **yes** |
 | `listExecutions` | GET | `/executions` | **yes** |
