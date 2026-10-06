@@ -29,6 +29,8 @@ import {
   reportPath,
   objectiveRestorePath,
   objectiveRestorePlanPath,
+  objectiveProposeRestorationPath,
+  proposeRestorationPath,
   registryObjectivePath,
   registryPreparePath,
   registryConfirmPath,
@@ -112,6 +114,7 @@ import type {
 import type {
   CreateObjectiveInput,
   Objective,
+  RestorationProposal,
   UpdateObjectiveInput,
 } from "../types/objective.js";
 import type { PortfolioPositionInput, PortfolioSnapshot } from "../types/portfolio.js";
@@ -1185,6 +1188,33 @@ export class AureonClient {
       objectiveRestorePlanPath(objectiveId)
     );
     return result.plan;
+  }
+
+  /**
+   * Unsigned restoration from vault balances.
+   * Pass both ids for the sleeve slice and the reserve floor together.
+   * Pass one id for that rule alone.
+   * Returns to, data, and value. Does not sign and does not broadcast.
+   * Both objectives must be manual. Auto is rejected because the keeper can send first.
+   */
+  async proposeRestoration(
+    input: string | { sleeveObjectiveId: string; reserveObjectiveId: string }
+  ): Promise<RestorationProposal> {
+    if (typeof input === "string") {
+      assertId(input, "objective id");
+      return requestJson(this.transport, objectiveProposeRestorationPath(input), {
+        method: "POST",
+      });
+    }
+    assertId(input.sleeveObjectiveId, "sleeve objective id");
+    assertId(input.reserveObjectiveId, "reserve objective id");
+    return requestJson(this.transport, proposeRestorationPath(), {
+      method: "POST",
+      body: {
+        sleeveObjectiveId: input.sleeveObjectiveId,
+        reserveObjectiveId: input.reserveObjectiveId,
+      },
+    });
   }
 
   /**
