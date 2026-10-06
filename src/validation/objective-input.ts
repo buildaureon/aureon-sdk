@@ -46,6 +46,20 @@ export function normalizeCreateObjectiveInput(
   if (input.tolerance < 0 || input.tolerance > 0.5) {
     throw new AureonValidationError("tolerance must be between 0 and 0.5");
   }
+  if (
+    input.profitTakeRatio !== undefined &&
+    (!(input.profitTakeRatio > 0) || input.profitTakeRatio > 1)
+  ) {
+    throw new AureonValidationError("profitTakeRatio must be greater than 0 and at most 1");
+  }
+  if (
+    input.weightBound !== undefined &&
+    input.weightBound !== "ceiling" &&
+    input.weightBound !== "floor" &&
+    input.weightBound !== "target"
+  ) {
+    throw new AureonValidationError("weightBound must be ceiling, floor, or target");
+  }
   const priority = input.priority ?? "high";
   if (!isObjectivePriority(priority)) {
     throw new AureonValidationError(`Unsupported priority: ${priority}`);
@@ -67,11 +81,12 @@ export function normalizeCreateObjectiveInput(
       automationMode: input.automationMode === "manual" ? "manual" : "auto",
     };
   }
+  const symbol = input.targetSymbol?.trim().toUpperCase();
   return {
     ...input,
     name,
     priority,
-    targetSymbol: null,
+    targetSymbol: symbol || null,
     automationMode: input.automationMode === "manual" ? "manual" : "auto",
   };
 }
