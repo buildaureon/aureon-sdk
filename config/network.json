@@ -3,18 +3,16 @@
   "note": "Default API is https://api.aureonlabs.network on mainnet. Pass network=testnet for testnet on the same official host. AUREON_API_URL overrides the host when set. The operator app at https://app.aureonlabs.network is the mainnet console.",
   "mainnet": {
     "baseUrl": "https://api.aureonlabs.network",
-    "chainId": 4663,
-    "chain": "Robinhood Chain",
+    "chain": "Robinhood Chain Mainnet",
     "explorer": "https://robinhoodchain.blockscout.com",
     "rpcUrl": "https://rpc.mainnet.chain.robinhood.com"
   },
   "testnet": {
     "baseUrl": "https://api.aureonlabs.network",
     "appUrl": "https://app.aureonlabs.network",
-    "chainId": 46630,
     "chain": "Robinhood Chain Testnet",
     "explorer": "https://explorer.testnet.chain.robinhood.com"
   },
   "sdkPackage": "@buildaureon/sdk",
-  "sdkVersion": "0.1.15"
+  "sdkVersion": "0.1.16"
 }
