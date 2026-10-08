@@ -7,11 +7,11 @@
 The official TypeScript HTTP client for the AUREON API.
 Financial Compass, capital health, and verified restore plans: one typed integration surface.
 
-Default network is **Robinhood Chain mainnet** (chain 4663). Confirm live vault and token addresses from the API you actually call.
+Default network is **Robinhood Chain Mainnet**. Confirm live vault and token addresses from the API you actually call.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESM](https://img.shields.io/badge/Module-ESM-f7df1e?style=flat-square)](#requirements)
-[![Version](https://img.shields.io/badge/version-0.1.15-a8e00d?style=flat-square)](https://github.com/buildaureon)
+[![Version](https://img.shields.io/badge/version-0.1.16-a8e00d?style=flat-square)](https://github.com/buildaureon)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b0e0d?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?style=flat-square&logo=nodejs&logoColor=white)](#requirements)
 
@@ -43,7 +43,7 @@ pnpm add @buildaureon/sdk
 12. [Client configuration](#client-configuration--transport-engine)
 13. [Error model](#error-model-and-code-handling)
 14. [CLI](#cli-command-line-guide)
-15. [Design principles](#design-principles--settlement-honesty)
+15. [Design principles](#design-principles--settlement-labels)
 16. [Documentation registry](#documentation-registry)
 17. [Community](#community--resources)
 
@@ -51,11 +51,11 @@ pnpm add @buildaureon/sdk
 
 ## Overview
 
-**AUREON** is the financial intelligence layer for onchain AI agents on **Robinhood Chain**. Agents and operators do not live on one-off swaps. They need continuous policy: keep a stable sleeve near a target weight, hold exposure bands on equity tokens, and restore capital when markets move. AUREON turns those rules into first-class **Financial Compass Objectives** — registered policies the system monitors, scores for health, and restores with explicit settlement receipts.
+**AUREON** is the financial intelligence layer for onchain AI agents on **Robinhood Chain**. Agents and operators need continuous policy: keep a stable sleeve near a target weight, hold exposure bands on equity tokens, and restore capital when markets move. AUREON turns those rules into first-class **Financial Compass Objectives** — registered policies the system monitors, scores for health, and restores with explicit settlement receipts.
 
 Traditional web3 tooling is transactional. An operator submits a deposit or a swap, the chain settles once, and the broader intent disappears. Markets then move. Allocations drift. The agent either wakes up late or fires uncontrolled rebalances with no shared memory of why capital was supposed to look a certain way. AUREON closes that gap with a hosted policy and health engine, a non-custodial vault path on Robinhood Chain, and a typed TypeScript client so integrators never hand-roll the trust boundary between monitoring and signing.
 
-**`@buildaureon/sdk`** is the official TypeScript HTTP client in this repository. It is how agent runtimes, operator scripts, and product surfaces talk to the AUREON API: wallet session handshake, Capital Book sync, objective CRUD, health and timeline queries, vault deposit and withdraw step preparation, restore plan execution, and controlled market-event rehearsal for integration tests. Private keys stay with the host application. The API never holds custody. Receipts are honest about whether settlement was **vault** (on-chain) or **staged** (ledger-local, labeled for UI transparency).
+**`@buildaureon/sdk`** is the official TypeScript HTTP client in this repository. It is how agent runtimes, operator scripts, and product surfaces talk to the AUREON API: wallet session handshake, Capital Book sync, objective CRUD, health and timeline queries, vault deposit and withdraw step preparation, restore plan execution, and controlled market-event rehearsal for integration tests. Private keys stay with the host application. The API never holds custody. Receipts state clearly whether settlement was **vault** (on-chain) or **staged** (ledger-local, labeled for UI transparency).
 
 The broader product stack includes the hosted AUREON API and Health Watchdog, the operator utility at [app.aureonlabs.network](https://app.aureonlabs.network), Smart Vault contracts on Robinhood Chain, and the public site at [aureonlabs.network](https://www.aureonlabs.network/). This README is the integrator front door — dense enough to understand the system, practical enough to ship a first session, and linked into the long-form docs under `docs/`.
 
@@ -71,7 +71,7 @@ AUREON treats capital as a living policy surface rather than a sequence of forgo
 - Produces recovery instructions (wrap or unwrap paths, keeper-driven vault swaps).
 - Appends an auditable timeline of compliance events and restore receipts.
 
-### The concept: persistent objectives, honest settlement
+### The concept: persistent objectives, clear settlement
 
 Unlike a one-shot rebalancer bot that fires and forgets, AUREON keeps the objective as the primitive. Health state, timeline events, and restore plans all hang off that policy object. When drift exceeds tolerance, the watchdog records a violation, a restore plan is available, and execution returns a receipt whose `settlement` field tells the truth about where capital actually moved.
 
@@ -111,6 +111,9 @@ flowchart LR
 | Authenticate a wallet session (optional nonce → sign) | `getAuthNonce`, `verifyWallet`, `createSessionTokenProvider` |
 | Sync and manage the Capital Book | `syncPortfolio`, `setPortfolio`, `clearPortfolio` |
 | Create and query Financial Compass objectives | `createObjective`, `listObjectives`, `getObjective` |
+| Check one agent hire | `checkPolicy`, `getPolicyCheck` |
+| Propose an unsigned restoration | `proposeRestoration` |
+| Store a wallet-broadcast rebalance | `confirmRestoration` |
 | Read health, timeline, and overview | `getHealth`, `getTimeline`, `getTimelinePage`, `getOverview`, `refreshWatchdog` |
 | Read decision records and stored history | `listDecisions`, `getDecision`, `getPortfolioHistory`, `getHealthHistory` |
 | Prepare and confirm a wallet-signed report | `prepareReport`, `confirmReport`, `listReports`, `getReport` |
@@ -174,11 +177,11 @@ flowchart TB
 
 Omitted `network` / omitted `baseUrl` uses the official API `https://api.aureonlabs.network` on Robinhood Chain **mainnet**. Pass `network: "testnet"` (or `AUREON_NETWORK=testnet`) to stay on testnet on the same official host. Set `baseUrl` / `AUREON_API_URL` only to override that host.
 
-The operator app at [app.aureonlabs.network](https://app.aureonlabs.network) is the mainnet console. Issue developer keys there. SDK and MCP omit `network` / `AUREON_NETWORK` and send `X-Aureon-Network: mainnet`. Pass `testnet` to stay on testnet, chain **46630**. First use: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
+The operator app at [app.aureonlabs.network](https://app.aureonlabs.network) is the mainnet console. Issue developer keys there. SDK and MCP omit `network` / `AUREON_NETWORK` and send `X-Aureon-Network: mainnet`. Pass `testnet` to stay on Robinhood Chain Testnet. First use: an empty vault Automatic restore returns **409**; `prepareVaultDeposit` returns unsigned steps; the host wallet or MetaMask broadcasts; this SDK and MCP agents never broadcast deposits.
 
 | | Mainnet (default) | Testnet (`network: "testnet"`) |
 | --- | --- | --- |
-| Chain ID | 4663 | 46630 |
+| Chain | Robinhood Chain Mainnet | Robinhood Chain Testnet |
 | API | `https://api.aureonlabs.network` | `https://api.aureonlabs.network` |
 | Utility | [app.aureonlabs.network](https://app.aureonlabs.network) | Same host with `network: "testnet"` |
 
@@ -345,7 +348,7 @@ Initialize the client with an **issued** developer API key (Developers page in t
 That key identifies your wallet for control-plane calls — sync, objectives, health, restore plans.
 A private key is only needed later to **broadcast** on-chain deposit/withdraw txs.
 
-**SDK supports Automatic objectives only** (`automationMode: "auto"`, the default). Manual Approve workflows stay in the operator utility.
+The default is Automatic (`automationMode: "auto"`). Pass `"manual"` on a sleeve and a reserve when you will call `proposeRestoration`. That call does not sign and does not send.
 
 ```ts
 import { createAureonClient } from "@buildaureon/sdk";
@@ -457,6 +460,40 @@ const stockObj = await aureon.createObjective({
 });
 
 const objectives = await aureon.listObjectives();
+```
+
+A sleeve uses `weightBound: "ceiling"` and `profitTakeRatio` (the fraction of the value above the cap to sell). A reserve uses `weightBound: "floor"`. Omit `weightBound` for a two-sided target. `hireLimitEth` is the maximum ETH for one agent hire. An ETH amount is compared with that cap directly. A SOL amount is priced as an ETH equivalent with live USD marks, rounded up, before the same comparison. `hireApprovalRequired` asks the user to approve a hire that is still inside that limit. Both hire fields are set when the objective is created.
+
+### Hire policy check
+
+`checkPolicy` reads the financial objective and returns `allow`, `refuse`, or `authorization_required`. It does not sign and it does not send the hire. `getPolicyCheck` reads that stored decision back. Use an issued Developers key for the wallet that owns the objective. `action.asset` is `ETH`, or `SOL` priced as an ETH equivalent against `hireLimitEth`. The API converts SOL with live USD marks and rounds up. A missing SOL or ETH price is `refuse`. Any other asset is `refuse`. A hire equal to the cap is inside the limit. A hire above the cap is refused, including when approval is also required. Inside the cap with `hireApprovalRequired` is `authorization_required`, and `policy.passed` is false. The check does not pay. SOL in this call is the asset symbol. The call does not build a Solana transaction.
+
+```ts
+const decision = await aureon.checkPolicy({
+  agentId: "agent_caller",
+  taskId: "task_hire",
+  objectiveId: objective.id,
+  action: { type: "hire", asset: "ETH", amount: "0.05", agent: "agent_paid" },
+});
+
+const stored = await aureon.getPolicyCheck(decision.actionId);
+```
+
+### Unsigned restoration
+
+`proposeRestoration` sizes steps from vault balances: the sleeve sells `profitTakeRatio` of the notional above the cap, then a reserve step only if stables are still under the floor. Each step returns `to`, `data`, and `value`. `transactionHash` and `sentBy` stay null. Both objectives are `manual`. The host signs. This call does not broadcast.
+
+```ts
+const proposal = await aureon.proposeRestoration({
+  sleeveObjectiveId: sleeve.id,
+  reserveObjectiveId: reserve.id,
+});
+```
+
+After the session wallet broadcasts a step and the receipt is mined, `confirmRestoration` checks that receipt and stores the execution. It does not sign and it does not broadcast.
+
+```ts
+const stored = await aureon.confirmRestoration(sleeve.id, transactionHash);
 ```
 
 ### Health, timeline, and overview
@@ -636,7 +673,7 @@ pnpm example:green-vs-plan
 
 ---
 
-## Design principles & settlement honesty
+## Design principles & settlement labels
 
 1. **Non-custodial by construction.** Private keys never leave the client. The API verifies signatures and returns unsigned steps; it does not sign for you.
 2. **Settlement transparency.** Every execution receipt includes `settlement`: `"vault"` means Robinhood Chain settlement; `"staged"` means ledger-local and must be labeled clearly in any user-facing surface.
@@ -659,7 +696,7 @@ Long-form technical docs live under `docs/`:
 | [docs/integration-guide.md](docs/integration-guide.md) | End-to-end integrator walkthrough |
 | [docs/security.md](docs/security.md) | API key and token guidance |
 | [docs/transport.md](docs/transport.md) | Retries, headers, transport edge cases |
-| [CHANGELOG.md](CHANGELOG.md) | Published versions. `0.1.15` adds unsigned restoration. `0.1.14` added financial history. The API health `version` is the API, not this package. |
+| [CHANGELOG.md](CHANGELOG.md) | `0.1.16` hire check, SOL priced as ETH, and `confirmRestoration`. `0.1.15` unsigned restoration. `0.1.14` financial history. API health `version` in this tree is `0.2.2`, not this package. |
 
 ---
 
