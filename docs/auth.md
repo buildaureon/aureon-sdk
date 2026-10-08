@@ -2,7 +2,7 @@
 
 How `@buildaureon/sdk` authenticates to the hosted AUREON API for agents, scripts, and server integrations.
 
-**Automation note:** The SDK path is designed for **Automatic** objectives only (`automationMode: "auto"`). Manual operator Approve flows belong in the utility UI, not in SDK agent loops.
+**Automation note:** The default is Automatic (`automationMode: "auto"`). Pass `"manual"` for an unsigned restoration sleeve or reserve. The issued key identifies the wallet. It does not sign.
 
 ---
 
@@ -89,7 +89,7 @@ import { createAureonClient, createSessionTokenProvider } from "@buildaureon/sdk
 
 const session = createSessionTokenProvider(null);
 const aureon = createAureonClient({
-  network: "testnet", // opt-in testnet, chain 46630
+  network: "testnet", // opt-in Robinhood Chain Testnet
   apiKey: process.env.AUREON_API_KEY,
   getAccessToken: session.getAccessToken,
 });

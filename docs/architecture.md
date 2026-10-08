@@ -1,10 +1,10 @@
 # Architecture Guide
 
-System architecture for AUREON and how `@buildaureon/sdk` `0.1.15` fits as the typed client for Automatic agent workflows.
+System architecture for AUREON and how `@buildaureon/sdk` `0.1.16` fits as the typed client for Automatic agent workflows.
 
-The health payload field `version` is the API (`0.2.1` in this tree). It is not the SDK version.
+The health payload field `version` is the API (`0.2.2` in this tree). It is not the SDK version. The SDK package version is `0.1.16`.
 
-**Automation note:** The SDK is built for **Automatic** objectives (`automationMode: "auto"`). Manual Approve operator flows are handled in the utility, not as the primary SDK architecture.
+**Automation note:** The default is Automatic (`automationMode: "auto"`). An unsigned restoration sleeve and reserve are created as `manual`, so the proposal returns steps and the keeper does not send first.
 
 ---
 
@@ -14,7 +14,7 @@ AUREON is a non-custodial Financial Compass for onchain agents on Robinhood Chai
 
 1. **Persistent policy** — objectives define target weights / risk bands and stay registered.
 2. **Continuous health** — watchdog + marks detect drift past tolerance.
-3. **Honest restore** — plans and receipts (`settlement: vault | staged`) make settlement transparent.
+3. **Clear restore** — plans and receipts (`settlement: vault | staged`) make settlement transparent.
 4. **Local signing** — owner deposits/withdraws are prepared by the API and signed by the host.
 
 ---
@@ -181,7 +181,7 @@ flowchart TD
 | --- | --- |
 | API key steals funds | No — cannot sign owner withdrawals |
 | Keeper steals funds | No — allowlisted swaps only |
-| Staged = on-chain | No — label `settlement` honestly |
+| Staged = on-chain | No — label `settlement` exactly |
 | SDK holds keys | No — host signer only |
 
 ---
@@ -193,7 +193,6 @@ Default omitted SDK/MCP options use the official API `https://api.aureonlabs.net
 | Item | Mainnet (default) | Testnet (`network: "testnet"`) |
 | --- | --- | --- |
 | Chain | Robinhood Chain mainnet | Robinhood Chain testnet |
-| Chain ID | `4663` | `46630` |
 | API | `https://api.aureonlabs.network` | `https://api.aureonlabs.network` |
 | Cash park | USDG | Testnet catalog (see API) |
 | Explorer | `https://robinhoodchain.blockscout.com` | `https://explorer.testnet.chain.robinhood.com` |
