@@ -61,8 +61,8 @@ const aureon = createAureonClient({
 
 | Rule | Behavior |
 |------|----------|
-| Omitted `network` and `baseUrl` | Official API `https://api.aureonlabs.network`, chain 4663 |
-| `network: "testnet"` | Same official host, chain 46630 |
+| Omitted `network` and `baseUrl` | Official API `https://api.aureonlabs.network`, Robinhood Chain Mainnet |
+| `network: "testnet"` | Same official host, Robinhood Chain Testnet |
 | Explicit `baseUrl` | Override; official host is allowed with either network |
 | `network` + disagreeing non-official host | Throws |
 | Invalid `baseUrl` scheme | Throws via `assertBaseUrl` |
@@ -207,11 +207,13 @@ async createObjective(input: CreateObjectiveInput): Promise<Objective>
 |--|--|
 | Auth | Required |
 | HTTP | `POST /objectives` |
-| Client validation | Name ≥ 3 chars; kind; `targetWeight` ∈ [0,1]; `tolerance` ∈ [0,0.5]; priority if set; `weightBound` of `ceiling`, `floor`, or `target` if set |
-| Automation | SDK supports **Automatic only**. Defaults **`automationMode: "auto"`**. Omit the field in agent integrations. |
+| Client validation | Name ≥ 3 chars; kind; `targetWeight` ∈ [0,1]; `tolerance` ∈ [0,0.5]; priority if set; `weightBound` of `ceiling`, `floor`, or `target` if set; `hireLimitEth` greater than 0 if set |
+| Automation | Defaults to **`auto`**. Pass **`manual`** for an unsigned restoration sleeve or reserve. |
 | `targetSymbol` | Required when `kind === "balanced_portfolio"` (uppercased on normalize). |
+| `hireLimitEth` | Optional. Maximum ETH for one agent hire. An ETH amount is compared directly. A SOL amount is converted to an ETH equivalent with live USD marks before that comparison. Set on create. |
+| `hireApprovalRequired` | Optional. A hire inside the cap returns `authorization_required`. |
 
-**SDK policy:** Automatic mode only. Manual Approve belongs in the operator utility — do not build Manual agent loops with this package.
+**SDK policy:** Omit `automationMode` for a keeper restore. Pass `"manual"` when the next call is `proposeRestoration`.
 
 ```ts
 const objective = await aureon.createObjective({
@@ -680,10 +682,55 @@ async proposeRestoration(
 | Auth | Required |
 | HTTP | `POST /objectives/propose-restoration` with both ids, or `POST /objectives/:id/propose-restoration` with one id |
 | Sizing | Vault balances. The sleeve step sells `profitTakeRatio` of the notional above a `ceiling`. The reserve step lifts stables to a `floor` only when that floor is still missed after the slice. |
-| Broadcast | None. `transactionHash` and `sentBy` are null. `minOut` in the calldata is 0. |
+| Broadcast | None. `transactionHash` and `sentBy` are null. `minOut` is 99% of the mark-implied buy. |
 | Mode | Both objectives are `manual`. `auto` is rejected because keeper restore can send before the steps are checked. |
 
-Create the sleeve with `weightBound: "ceiling"` and `profitTakeRatio`. Create the reserve with `weightBound: "floor"`. Pass `automationMode: "manual"` on both. The host shows `to`, `data`, and `value` to the governor before anyone signs. `aureon_restore_objective` is a different call.
+Create the sleeve with `weightBound: "ceiling"` and `profitTakeRatio`. Create the reserve with `weightBound: "floor"`. Pass `automationMode: "manual"` on both. The host shows `to`, `data`, and `value` before anyone signs. `restoreObjective` is a different call.
+
+### `confirmRestoration(objectiveId, transactionHash)`
+
+```ts
+async confirmRestoration(
+  objectiveId: string,
+  transactionHash: string
+): Promise<ExecutionReceipt>
+```
+
+| | |
+|--|--|
+| Auth | Required. The session wallet must be the sender on the receipt. |
+| HTTP | `POST /objectives/:id/confirm-restoration` with `{ transactionHash }` |
+| Receipt | The transaction succeeded, the sender is the session wallet, `to` is the vault, and the calldata is the rebalance. |
+| Broadcast | None. The wallet already broadcast. This method stores the confirmed execution. |
+
+`proposeRestoration` returns the unsigned steps. The host signs and broadcasts. `confirmRestoration` runs after that receipt is mined. `restoreObjective` and `runExecution` are different calls. `confirmExecutionSettlement` confirms settlement on an existing execution and is separate from this method.
+
+### `checkPolicy(input)`
+
+```ts
+async checkPolicy(input: PolicyCheckInput): Promise<PolicyCheckResult>
+```
+
+| | |
+|--|--|
+| Auth | Required. Issued Developers key for the wallet that owns the objective. |
+| HTTP | `POST /v1/policy/check` |
+| Result | `allow`, `refuse`, or `authorization_required`, plus `actionId`, `reason`, and `policy.checks`. |
+| Broadcast | None. The hire is not signed and not sent. |
+
+`action.asset` is `ETH`, or `SOL` priced as an ETH equivalent against `hireLimitEth`. An ETH amount is compared directly. A SOL amount is converted in the API with live USD marks and rounded up: `SOL × (SOL_USD / ETH_USD)`. A missing SOL or ETH price is `refuse`. The SDK sends the asset string. Any other asset is `refuse`. A hire equal to `hireLimitEth` is inside the limit. A hire above the cap is refused even when `hireApprovalRequired` is set. Inside the cap with approval required returns `authorization_required` and `policy.passed` is false. The check does not pay, does not sign, and does not send.
+
+### `getPolicyCheck(actionId)`
+
+```ts
+async getPolicyCheck(actionId: string): Promise<PolicyCheckResult>
+```
+
+| | |
+|--|--|
+| Auth | Required |
+| HTTP | `GET /v1/policy/checks/:id` |
+| Use | Read the stored decision. Another wallet's id is not found. |
 
 ### `runExecution(objectiveId)`
 
@@ -708,7 +755,7 @@ async restoreObjective(objectiveId: string): Promise<ExecutionReceipt>
 |--|--|
 | Auth | Required |
 | HTTP | `POST /objectives/:id/restore` |
-| Settlement | Vault-backed restore when configured; same honesty labels as `runExecution` |
+| Settlement | Vault-backed restore when configured; same settlement labels as `runExecution` |
 | Use | Preferred vault restore entry for Automatic objectives after breach |
 
 ### `listExecutions(objectiveId?)`
@@ -783,6 +830,9 @@ session.clear();
 | `applyMarketEvent` | POST | `/market/events` | **yes** |
 | `getRestorePlan` | GET | `/objectives/:id/restore-plan` | **yes** |
 | `proposeRestoration` | POST | `/objectives/propose-restoration` | **yes** |
+| `confirmRestoration` | POST | `/objectives/:id/confirm-restoration` | **yes** |
+| `checkPolicy` | POST | `/v1/policy/check` | **yes** |
+| `getPolicyCheck` | GET | `/v1/policy/checks/:id` | **yes** |
 | `restoreObjective` | POST | `/objectives/:id/restore` | **yes** |
 | `runExecution` | POST | `/executions/run` | **yes** |
 | `listExecutions` | GET | `/executions` | **yes** |
