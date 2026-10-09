@@ -2,7 +2,7 @@
 
 Security architecture for `@buildaureon/sdk`: trust boundaries, credentials, vault signing, and production checklist.
 
-**Automation note:** SDK agents should run **Automatic** objectives only. Manual Approve flows are utility concerns, not SDK security surface.
+**Automation note:** The default is Automatic. An unsigned restoration is `manual` so the keeper does not send before the host signs. The API key does not broadcast.
 
 ---
 
@@ -67,7 +67,7 @@ Keeper-driven Automatic restores execute allowlisted vault swaps. Keepers cannot
 
 ---
 
-## 4. Settlement honesty
+## 4. Settlement labels
 
 Every execution receipt includes `settlement`:
 
@@ -104,7 +104,7 @@ Never collapse staged into “confirmed on Robinhood Chain.”
 - [ ] Issued developer key (not a shared env bootstrap key) in secrets
 - [ ] Private keys isolated from the API key and never logged
 - [ ] Deposit/withdraw broadcast path reviewed and ABI-checked
-- [ ] Automatic objectives only in SDK loops
+- [ ] Automatic for a keeper restore. Manual for an unsigned restoration sleeve and reserve.
 - [ ] UI / agent summaries honor `settlement: vault | staged`
 - [ ] Gas reserve on the signing wallet for owner txs
 - [ ] Key rotation plan (pause/revoke in Developers)
