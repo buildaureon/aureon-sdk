@@ -2,7 +2,7 @@
 
 Error classification, payloads, recovery patterns, and live failure modes for `@buildaureon/sdk`.
 
-**Automation note:** Examples assume **Automatic** objectives. Manual Approve error paths are out of scope for SDK agents.
+**Automation note:** A keeper restore uses Automatic. `proposeRestoration` rejects `auto` because the keeper can send before the steps are checked. Create that sleeve and reserve as `manual`.
 
 ---
 
