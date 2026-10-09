@@ -23,6 +23,7 @@ import {
   createSessionTokenProvider,
   resolveAureonNetworkFromEnv,
   isAureonError,
+  MAINNET_CHAIN_ID,
 } from "../../src/index.js";
 
 function requireEnv(name: string): string {
@@ -41,14 +42,14 @@ const resolved = resolveAureonNetworkFromEnv();
 const chainId = Number(process.env.AUREON_CHAIN_ID || resolved.chainId);
 const rpc =
   process.env.AUREON_RPC_URL?.trim() ||
-  (chainId === 4663
+  (chainId === MAINNET_CHAIN_ID
     ? "https://rpc.mainnet.chain.robinhood.com"
     : "https://rpc.testnet.chain.robinhood.com");
 const publicClient = createPublicClient({ transport: http(rpc) });
 const walletClient = createWalletClient({ account, transport: http(rpc) });
 const chain = {
   id: chainId,
-  name: chainId === 4663 ? "Robinhood Chain" : "Robinhood Chain Testnet",
+  name: chainId === MAINNET_CHAIN_ID ? "Robinhood Chain" : "Robinhood Chain Testnet",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [rpc] } },
 } as const;
