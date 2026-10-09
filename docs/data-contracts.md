@@ -23,7 +23,7 @@ This guide details each model, its fields, TypeScript types, constraints, and in
 
 ## 2. Objective Domain
 
-Objectives represent the core primitives of AUREON. Instead of executing one-off transactions, operators register continuous rules (e.g., "Maintain a 20% stablecoin reserve").
+Objectives represent the core primitives of AUREON. Operators register continuous rules (e.g., "Maintain a 20% stablecoin reserve").
 
 ### ObjectiveStatus
 
@@ -66,14 +66,14 @@ export type ObjectivePriority = "low" | "medium" | "high" | "critical";
 
 Determines how policy violations are corrected:
 
-* `auto` — Automatic restore coordination (SDK **only** supported mode; default).
-* `manual` — Operator utility Approve flow. Not used for SDK agent integrations.
+* `auto` — Automatic restore. Default when `automationMode` is omitted.
+* `manual` — Required for `proposeRestoration`. The keeper does not send before the host signs.
 
 ```ts
 export type ObjectiveAutomationMode = "manual" | "auto";
 ```
 
-For `@buildaureon/sdk`, always omit `automationMode` or pass `"auto"`.
+Omit `automationMode` for Automatic. Pass `"manual"` for an unsigned restoration sleeve or reserve.
 
 ### ObjectivePolicy
 
@@ -89,6 +89,14 @@ export interface ObjectivePolicy {
   maxRiskScore?: number;
   /** Optional fraction of rewards to redirect when kind is reward_reinvestment */
   reinvestRatio?: number;
+  /** Fraction of the notional above a sleeve cap to sell. Not a full return to the cap. */
+  profitTakeRatio?: number;
+  /** ceiling, floor, or target. Omitted means target. */
+  weightBound?: "ceiling" | "floor" | "target";
+  /** Max ETH for one agent hire. Absent means this objective has no hire cap. */
+  hireLimitEth?: number;
+  /** True when a hire inside the cap still needs the user. */
+  hireApprovalRequired?: boolean;
   /** Holding symbol when tracking a specific asset (e.g., "WETH") */
   targetSymbol?: string;
   /** Automatically generated human-readable policy summary */
@@ -151,7 +159,9 @@ Passed to `createObjective` to register a new rule:
 *   `targetSymbol` (Required if kind is `balanced_portfolio`): Token symbol.
 *   `profitTakeRatio` (Optional): Fraction of the notional above a sleeve cap to sell. Not a full return to the cap.
 *   `weightBound` (Optional): `ceiling`, `floor`, or `target`. Omit for the two-sided target check.
-*   `automationMode` (Optional): Defaults to `auto` in the SDK. The unsigned restoration call requires `manual` so the keeper does not send first.
+*   `hireLimitEth` (Optional): Maximum ETH for one agent hire. An ETH amount is compared directly. A SOL amount is converted to an ETH equivalent with live USD marks, rounded up, before that comparison. A missing mark refuses the check. Set on create.
+*   `hireApprovalRequired` (Optional): A hire inside the cap returns `authorization_required`.
+*   `automationMode` (Optional): Defaults to `auto`. The unsigned restoration call requires `manual` so the keeper does not send first.
 
 #### `UpdateObjectiveInput`
 Passed to `updateObjective` for partial updates. `targetSymbol` and `automationMode` are fixed at creation and cannot be updated.
@@ -480,7 +490,7 @@ export type ReceiptValidationResult = {
 };
 ```
 
-Enforces required fields, `vault` vs `staged` honesty, explorer rules, and `verifiedOnChain` / `settlementRecord` consistency. See [receipt-validation.md](./receipt-validation.md).
+Enforces required fields, `vault` vs `staged` labels, explorer rules, and `verifiedOnChain` / `settlementRecord` consistency. See [receipt-validation.md](./receipt-validation.md).
 
 #### JSON Representation Example
 ```json
@@ -495,7 +505,7 @@ Enforces required fields, `vault` vs `staged` honesty, explorer rules, and `veri
   "createdAt": "2026-07-15T22:46:00.000Z",
   "confirmedAt": "2026-07-15T22:46:05.000Z",
   "settlement": "vault",
-  "explorerUrl": "https://explorer.testnet.chain.robinhood.com/tx/0xe295c2763f0d4681a8b54dfd38a0f8bfd21051515fcd9185a494ff3c8a99478f",
+  "explorerUrl": "https://robinhoodchain.blockscout.com/tx/0x78e73a54c8da0e2a6a77f1c300591502f6668943b15958c6cc5dfdfc22eaffe0",
   "registryRef": {
     "objectiveKey": "0xabc…",
     "contractAddress": "0x76d8f088d2abba3c73ff93f92308f8b59b250ea5"
@@ -583,10 +593,9 @@ export interface VaultPrepareResult {
 
 #### JSON Representation Example (mainnet shape)
 
-Default product network is mainnet `chainId` **4663**. Confirm live vault and token addresses from the API you actually call. Opt-in testnet uses `46630` on the same official host.
+Default product network is Robinhood Chain Mainnet. Confirm live vault and token addresses from the API you actually call. Opt-in testnet uses the same official host. `chainId` always matches the network you picked.
 ```json
 {
-  "chainId": 4663,
   "vaultAddress": "0x1234567890123456789012345678901234567890",
   "explorerBase": "https://robinhoodchain.blockscout.com",
   "symbol": "WETH",
@@ -707,7 +716,7 @@ export interface AureonClientOptions {
 *   `tolerance` must be inside the `[0, 0.5]` closed interval.
 *   Objective display names must have a trimmed length of at least 3 characters.
 *   `balanced_portfolio` objectives must specify a valid targetSymbol string.
-*   SDK client creations default to Automatic restore mode (`automationMode: "auto"`).
+*   Create defaults to Automatic. Pass `manual` for an unsigned restoration sleeve and reserve.
 *   Any base URL passed must use an absolute `http://` or `https://` scheme.
 *   The portfolio book may be empty, which is evaluated as 0 notional value.
 *   Execution receipts must label the settlement mechanism cleanly (`staged` versus `vault`).
