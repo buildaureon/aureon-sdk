@@ -2,7 +2,7 @@
 
 Integrate `@buildaureon/sdk` into server-side agents and automated rebalancing loops against the live AUREON API.
 
-**Automation note:** SDK integrations support **Automatic mode only** (`automationMode: "auto"` — the default). Do not build Manual Approve agent loops with the SDK; use the operator utility for Manual workflows.
+**Automation note:** The default is Automatic (`automationMode: "auto"`). Pass `"manual"` for an unsigned restoration sleeve or reserve. That proposal returns steps and does not send.
 
 ---
 
@@ -250,7 +250,7 @@ console.log(flow.phases.settlement?.verifiedOnChain);
 console.log(flow.message);
 ```
 
-Proof tiers: **claim_only** (validation failed) → **schema_valid** (honest receipt shape) → **chain_verified** (independent settlement record for vault).
+Proof tiers: **claim_only** (validation failed) → **schema_valid** (valid receipt shape) → **chain_verified** (independent settlement record for vault).
 
 For read-only checks on existing executions, use `getReceiptVerificationFlow(executionId?)`.
 
