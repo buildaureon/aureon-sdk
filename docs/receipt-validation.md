@@ -1,6 +1,6 @@
 # Receipt validation
 
-Receipts must follow honest settlement rules. Use the SDK validator after every restore or when ingesting receipts from logs.
+Receipts must follow clear settlement rules. Use the SDK validator after every restore or when ingesting receipts from logs.
 
 ---
 
@@ -56,7 +56,7 @@ for (const receipt of await client.listExecutions()) {
 | `verifiedOnChain: true` needs matching record | `VERIFIED_WITHOUT_RECORD` |
 | Registry ref hex shape | `INVALID_REGISTRY_REF` |
 
-The validator does **not** re-query the chain — it checks shape and honesty only.
+The validator does **not** re-query the chain — it checks shape and settlement labels only.
 
 ---
 
