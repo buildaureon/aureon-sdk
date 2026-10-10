@@ -36,9 +36,9 @@ async function main(): Promise<void> {
   });
 
   const result = await aureon.applyMarketEvent({
-    name: "NVDA Stock Token Rally",
-    description: "Controlled mark appreciation on NVIDIA Stock Token",
-    symbol: "NVDA",
+    name: "WETH Rally",
+    description: "Controlled mark move on WETH, a token every mainnet wallet can hold",
+    symbol: "WETH",
     priceChangeRatio: 0.45,
     // autoRestore: true runs restorative execution when objectives breach —
     // use autoRestore: false for the green-vs-plan paradox demo (see example:green-vs-plan).
