@@ -27,7 +27,7 @@ function printFlow(flow: ReceiptVerificationFlow): void {
   console.log(`   Settlement: ${flow.phases.claimed.settlement}`);
   console.log(`   Summary:    ${flow.phases.claimed.summary}\n`);
 
-  console.log("2. Validate — local honesty check (schema + settlement rules)");
+  console.log("2. Validate — local receipt check (schema + settlement rules)");
   console.log(`   Valid:      ${flow.phases.validation.valid}`);
   if (!flow.phases.validation.valid) {
     for (const issue of flow.phases.validation.issues) {
