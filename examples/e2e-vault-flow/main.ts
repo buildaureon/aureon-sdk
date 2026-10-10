@@ -24,6 +24,7 @@ import {
   createSessionTokenProvider,
   resolveAureonNetworkFromEnv,
   isAureonError,
+  MAINNET_CHAIN_ID,
 } from "../../src/index.js";
 
 function requireEnv(name: string): string {
@@ -55,7 +56,7 @@ async function main(): Promise<void> {
   const chainId = Number(process.env.AUREON_CHAIN_ID ?? resolved.chainId);
   const rpcUrl =
     process.env.AUREON_RPC_URL?.trim() ||
-    (chainId === 4663
+    (chainId === MAINNET_CHAIN_ID
       ? "https://rpc.mainnet.chain.robinhood.com"
       : "https://rpc.testnet.chain.robinhood.com");
 
@@ -67,7 +68,7 @@ async function main(): Promise<void> {
   });
   const chain = {
     id: chainId,
-    name: chainId === 4663 ? "Robinhood Chain" : "Robinhood Chain Testnet",
+    name: chainId === MAINNET_CHAIN_ID ? "Robinhood Chain" : "Robinhood Chain Testnet",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [rpcUrl] } },
   } as const;
