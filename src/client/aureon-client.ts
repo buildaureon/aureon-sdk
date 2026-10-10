@@ -6,7 +6,8 @@
  * optional wallet Bearer sessions also work (Bearer wins when both are sent).
  * Env bootstrap keys unlock product access only.
  *
- * Objectives default to Automatic automation mode. Vault deposit and withdraw
+ * Objectives default to Automatic. Pass manual for an unsigned restoration.
+ * Vault deposit and withdraw
  * are prepare-calldata steps for wallet signing; not server-side broadcasts.
  * Restorative execution receipts may use `settlement: "vault"` or
  * `settlement: "staged"` depending on the restore path.
@@ -30,7 +31,10 @@ import {
   objectiveRestorePath,
   objectiveRestorePlanPath,
   objectiveProposeRestorationPath,
+  objectiveConfirmRestorationPath,
   proposeRestorationPath,
+  policyCheckPath,
+  policyCheckByIdPath,
   registryObjectivePath,
   registryPreparePath,
   registryConfirmPath,
@@ -114,6 +118,8 @@ import type {
 import type {
   CreateObjectiveInput,
   Objective,
+  PolicyCheckInput,
+  PolicyCheckResult,
   RestorationProposal,
   UpdateObjectiveInput,
 } from "../types/objective.js";
@@ -265,12 +271,12 @@ export class AureonClient {
     return this.transport.baseUrl;
   }
 
-  /** `mainnet` (4663) or `testnet` (46630). */
+  /** `mainnet` (default) or `testnet`. */
   get network(): AureonNetwork {
     return this.resolvedNetwork;
   }
 
-  /** Chain id bundled with `network`. */
+  /** Chain number that matches `network`. */
   get chainId(): number {
     return this.resolvedChainId;
   }
@@ -344,9 +350,9 @@ export class AureonClient {
 
   /**
    * Creates and activates a Financial Compass Objective (FCO).
-   * SDK / agent path always prefers Automatic (`automationMode` omitted → `"auto"`).
+   * Defaults to Automatic when `automationMode` is omitted.
+   * Pass `"manual"` for an unsigned restoration sleeve or reserve.
    * Mode cannot be changed later via `updateObjective`; recreate instead.
-   * Passing `"manual"` is reserved for the operator utility Approve UX.
    * Auth required.
    */
   async createObjective(input: CreateObjectiveInput): Promise<Objective> {
@@ -1215,6 +1221,53 @@ export class AureonClient {
         reserveObjectiveId: input.reserveObjectiveId,
       },
     });
+  }
+
+  /**
+   * Stores a vault rebalance the session wallet already broadcast.
+   * Checks the receipt. Does not sign and does not broadcast.
+   */
+  async confirmRestoration(
+    objectiveId: string,
+    transactionHash: string
+  ): Promise<ExecutionReceipt> {
+    assertId(objectiveId, "objective id");
+    const hash = transactionHash.trim();
+    if (!/^0x[a-fA-F0-9]{64}$/.test(hash)) {
+      throw new AureonValidationError("transactionHash must be a 32-byte hex hash");
+    }
+    return requestJson(this.transport, objectiveConfirmRestorationPath(objectiveId), {
+      method: "POST",
+      body: { transactionHash: hash },
+    });
+  }
+
+  /**
+   * Checks one proposed agent hire against the wallet's financial objective.
+   * Returns allow, refuse, or authorization_required.
+   * Does not send the hire and does not sign.
+   */
+  async checkPolicy(input: PolicyCheckInput): Promise<PolicyCheckResult> {
+    assertId(input.objectiveId, "objective id");
+    if (!input.agentId?.trim()) {
+      throw new AureonValidationError("agentId is required");
+    }
+    if (!input.taskId?.trim()) {
+      throw new AureonValidationError("taskId is required");
+    }
+    if (!input.action?.agent?.trim()) {
+      throw new AureonValidationError("action.agent is required");
+    }
+    return requestJson(this.transport, policyCheckPath(), {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  /** Reads one stored hire decision. Does not send the hire. */
+  async getPolicyCheck(actionId: string): Promise<PolicyCheckResult> {
+    assertId(actionId, "action id");
+    return requestJson(this.transport, policyCheckByIdPath(actionId));
   }
 
   /**
