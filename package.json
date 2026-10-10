@@ -1,6 +1,6 @@
 {
   "name": "@buildaureon/sdk",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Official TypeScript SDK for AUREON Financial Compass on Robinhood Chain",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "bench": "tsx benchmarks/client-throughput.ts",
     "example:quickstart": "tsx examples/quickstart/main.ts",
     "example:market": "tsx examples/market-event/main.ts",
@@ -36,7 +36,6 @@
     "example:receipt-verification": "tsx examples/receipt-verification/main.ts",
     "example:portfolio-watch": "tsx examples/portfolio-watch/main.ts",
     "example:full-aureon-loop": "tsx examples/full-aureon-loop/main.ts",
-    "example:paper-session": "tsx examples/paper-session/main.ts",
     "example:sdk-demo-terminal": "tsx examples/sdk-demo-terminal/main.ts",
     "example:e2e": "tsx examples/e2e-vault-flow/main.ts",
     "example:e2e-policy": "tsx examples/e2e-policy-rebalance/main.ts",
@@ -68,5 +67,8 @@
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "viem": "^2.55.1"
+  },
+  "overrides": {
+    "esbuild": "^0.28.2"
   }
 }
