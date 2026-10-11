@@ -22,7 +22,7 @@ export interface ExecutionReceipt {
   confirmedAt: string | null;
   /**
    * `"vault"`: keeper rebalance confirmed (or pending_vault_* then confirmed).
-   * `"staged"`: capital-book restore only (honest non-finality label).
+   * `"staged"`: capital-book restore only (book-only label).
    */
   settlement: "staged" | "vault";
   /** Block explorer link when vault tx is a real `0x…` hash; null for staged. */
