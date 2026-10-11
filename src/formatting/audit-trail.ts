@@ -231,7 +231,7 @@ function auditTrailMessage(input: {
   chainVerified: boolean;
 }): string {
   if (input.invalid) {
-    return "Audit trail assembled with dishonest or incomplete receipts. Do not treat success text as proof.";
+    return "Audit trail assembled with invalid or incomplete receipts. Do not treat success text as proof.";
   }
   if (input.receiptCount === 0) {
     return "Audit trail shows the objective only. No restore has been recorded yet.";
