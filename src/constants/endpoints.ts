@@ -72,8 +72,20 @@ export function objectiveProposeRestorationPath(id: string): string {
   return `${objectivePath(id)}/propose-restoration`;
 }
 
+export function objectiveConfirmRestorationPath(id: string): string {
+  return `${objectivePath(id)}/confirm-restoration`;
+}
+
 export function proposeRestorationPath(): string {
   return `${ENDPOINTS.objectives}/propose-restoration`;
+}
+
+export function policyCheckPath(): string {
+  return "/v1/policy/check";
+}
+
+export function policyCheckByIdPath(id: string): string {
+  return `/v1/policy/checks/${encodeURIComponent(id)}`;
 }
 
 export function developerApiKeyPath(id: string): string {
