@@ -14,6 +14,9 @@ export type {
   WeightBound,
   RestorationProposal,
   RestorationStep,
+  PolicyDecision,
+  PolicyCheckInput,
+  PolicyCheckResult,
 } from "./objective.js";
 export {
   OBJECTIVE_KINDS,
