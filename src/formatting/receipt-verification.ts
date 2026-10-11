@@ -87,7 +87,7 @@ export function buildReceiptVerificationFlow(input: {
     "An AI saying 'transaction successful' is only a claim — validate the receipt before trusting it.";
   if (currentPhase === "validation_failed") {
     message =
-      "Receipt failed validation — do not summarize as proof. Fix honesty issues before reporting success.";
+      "Receipt failed validation — do not summarize as proof. Fix receipt issues before reporting success.";
   } else if (currentPhase === "chain_verified") {
     message =
       "Receipt passes validation and has independent on-chain settlement proof.";
