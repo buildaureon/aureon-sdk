@@ -24,9 +24,8 @@ export type ObjectivePriority = "low" | "medium" | "high" | "critical";
 /**
  * Per-objective restore behaviour as stored on the API.
  *
- * SDK / agent integrations create objectives as **Automatic** (default).
- * `"manual"` exists so the operator utility can require an Approve click;
- * it is not part of the recommended SDK integration path.
+ * Omit the field and create defaults to `"auto"`.
+ * Pass `"manual"` for an unsigned restoration sleeve or reserve.
  */
 export type ObjectiveAutomationMode = "manual" | "auto";
 
@@ -49,6 +48,10 @@ export interface ObjectivePolicy {
   weightBound?: WeightBound;
   /** Holding symbol when the objective tracks a specific asset weight. */
   targetSymbol?: string;
+  /** Max ETH for one agent hire. Absent means this objective has no hire cap. */
+  hireLimitEth?: number;
+  /** True when a hire inside the cap still needs the user. */
+  hireApprovalRequired?: boolean;
   summary: string;
 }
 
@@ -61,7 +64,7 @@ export interface Objective {
   priority: ObjectivePriority;
   /**
    * Restore mode for this objective.
-   * SDK creates always set `"auto"`. `"manual"` is operator-utility only.
+   * `"auto"` is the default. `"manual"` is required for unsigned restoration.
    */
   automationMode: ObjectiveAutomationMode;
   policy: ObjectivePolicy;
@@ -77,9 +80,8 @@ export interface Objective {
 /**
  * Input for creating a new objective.
  *
- * SDK create always sends `automationMode: "auto"` (Automatic restore).
- * Manual Approve is an operator-utility concern; do not rely on it in
- * agent / SDK loops.
+ * Omit `automationMode` for an Automatic objective.
+ * Pass `"manual"` for an unsigned restoration sleeve or reserve.
  */
 export interface CreateObjectiveInput {
   name: string;
@@ -93,10 +95,14 @@ export interface CreateObjectiveInput {
   profitTakeRatio?: number;
   /** ceiling, floor, or target. Omit for the two-sided target check. */
   weightBound?: WeightBound;
+  /** Max ETH for one agent hire against this objective. */
+  hireLimitEth?: number;
+  /** When true, a hire inside the cap returns authorization_required. */
+  hireApprovalRequired?: boolean;
   targetSymbol?: string | null;
   /**
-   * @deprecated For SDK integrations omit this; create always uses Automatic.
-   * The operator utility may still pass `"manual"` for Approve UX.
+   * Omit for Automatic. Pass `"manual"` for unsigned restoration.
+   * Locked after create.
    */
   automationMode?: ObjectiveAutomationMode;
   /** Optional note stored with the decision record. Empty is ignored. */
@@ -163,6 +169,33 @@ export interface ReserveRestoration {
   buySymbol: string;
   amountHuman: string;
   stepRequired: boolean;
+}
+
+export type PolicyDecision = "allow" | "refuse" | "authorization_required";
+
+/** One proposed agent hire. The check does not send it. */
+export interface PolicyCheckInput {
+  agentId: string;
+  taskId: string;
+  objectiveId: string;
+  action: {
+    type: string;
+    asset: string;
+    amount: string | number;
+    agent: string;
+  };
+}
+
+/** Stored hire decision. actionId is the stored row, not a chain transaction. */
+export interface PolicyCheckResult {
+  decision: PolicyDecision;
+  objectiveId: string;
+  actionId: string;
+  reason: string;
+  policy: {
+    passed: boolean;
+    checks: string[];
+  };
 }
 
 /** Unsigned vault steps. transactionHash and sentBy stay null. */
