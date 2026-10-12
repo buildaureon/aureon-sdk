@@ -109,11 +109,11 @@ test("buildReceiptVerificationFlow vault chain-verified path", () => {
 });
 
 test("buildReceiptVerificationFlow validation failure path", () => {
-  const dishonest = {
+  const invalidReceipt = {
     ...stagedReceipt,
     explorerUrl: "https://explorer.testnet.chain.robinhood.com/tx/0xbad",
   };
-  const flow = buildReceiptVerificationFlow({ receipt: dishonest });
+  const flow = buildReceiptVerificationFlow({ receipt: invalidReceipt });
 
   assert.equal(flow.phases.validation.valid, false);
   assert.equal(flow.proofTier, "claim_only");
