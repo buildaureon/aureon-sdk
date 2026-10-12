@@ -12,6 +12,7 @@ import type { ExecutionReceipt } from "../src/types/execution.js";
 import type { Objective } from "../src/types/objective.js";
 import type { SettlementRecord } from "../src/types/settlement.js";
 import type { TimelineEvent } from "../src/types/timeline.js";
+import { TESTNET_CHAIN_ID } from "../src/index.js";
 
 const VAULT_TX =
   "0xabc123def4567890123456789012345678901234567890123456789012345678";
@@ -147,7 +148,7 @@ test("buildFinancialAuditTrail joins registry + verified vault + settlement", ()
         configHash: "0x".padEnd(66, "c"),
         owner: "0x1234567890123456789012345678901234567890",
         status: "active",
-        chainId: 46630,
+        chainId: TESTNET_CHAIN_ID,
         contractAddress: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
         transactionHash: VAULT_TX,
         blockNumber: 99,
@@ -177,14 +178,14 @@ test("buildFinancialAuditTrail joins registry + verified vault + settlement", ()
   assert.ok(lines.some((line) => /registered on-chain/.test(line)));
 });
 
-test("buildFinancialAuditTrail flags dishonest receipts", () => {
-  const dishonest: ExecutionReceipt = {
+test("buildFinancialAuditTrail flags invalid receipts", () => {
+  const invalidReceipt: ExecutionReceipt = {
     ...stagedReceipt,
     explorerUrl: "https://explorer.testnet.chain.robinhood.com/tx/0xbad",
   };
   const trail = buildFinancialAuditTrail({
     objective,
-    receipts: [dishonest],
+    receipts: [invalidReceipt],
     settlements: [],
     timeline,
   });
