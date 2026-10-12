@@ -60,6 +60,12 @@ export function normalizeCreateObjectiveInput(
   ) {
     throw new AureonValidationError("weightBound must be ceiling, floor, or target");
   }
+  if (
+    input.hireLimitEth !== undefined &&
+    (!Number.isFinite(input.hireLimitEth) || !(input.hireLimitEth > 0))
+  ) {
+    throw new AureonValidationError("hireLimitEth must be greater than 0");
+  }
   const priority = input.priority ?? "high";
   if (!isObjectivePriority(priority)) {
     throw new AureonValidationError(`Unsupported priority: ${priority}`);
@@ -76,8 +82,6 @@ export function normalizeCreateObjectiveInput(
       name,
       priority,
       targetSymbol: symbol,
-      // SDK / agent path defaults to Automatic. Explicit "manual" is reserved
-      // for the operator utility Approve UX; not recommended for integrations.
       automationMode: input.automationMode === "manual" ? "manual" : "auto",
     };
   }
