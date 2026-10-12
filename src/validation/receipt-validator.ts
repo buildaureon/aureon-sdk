@@ -1,5 +1,5 @@
 /**
- * @fileoverview Execution receipt validator — schema + honesty rules.
+ * @fileoverview Execution receipt validator — schema + settlement rules.
  */
 
 import { AureonValidationError } from "../errors/base.js";
@@ -206,7 +206,7 @@ function validateRegistryRef(
 }
 
 /**
- * Validates an execution receipt against the receipt schema and honesty rules.
+ * Validates an execution receipt against the receipt schema and settlement rules.
  * Never throws — inspect `valid` and `issues`.
  */
 export function validateExecutionReceipt(input: unknown): ReceiptValidationResult {
