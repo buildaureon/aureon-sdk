@@ -27,7 +27,7 @@ test("omitted options resolve to the official API / mainnet", () => {
   assert.equal(client.chainId, MAINNET_CHAIN_ID);
 });
 
-test("network mainnet keeps the official API and chain 4663", () => {
+test("network mainnet keeps the official API and mainnet chain", () => {
   const resolved = resolveAureonNetwork({ network: "mainnet" });
   assert.equal(resolved.network, "mainnet");
   assert.equal(resolved.baseUrl, OFFICIAL_API_BASE_URL);
