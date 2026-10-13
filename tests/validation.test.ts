@@ -24,9 +24,9 @@ test("normalizeCreateObjectiveInput defaults automationMode to auto", () => {
   assert.equal(input.automationMode, "auto");
 });
 
-test("normalizeCreateObjectiveInput allows explicit manual for operator utility", () => {
+test("normalizeCreateObjectiveInput keeps explicit manual", () => {
   const input = normalizeCreateObjectiveInput({
-    name: "Manual Approve Objective",
+    name: "Manual sleeve",
     kind: "stable_allocation",
     targetWeight: 0.2,
     tolerance: 0.02,
