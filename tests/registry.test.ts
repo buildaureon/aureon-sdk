@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AureonClient } from "../src/client/aureon-client.js";
+import { TESTNET_CHAIN_ID } from "../src/index.js";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -19,7 +20,7 @@ test("getRegistryStatus calls /registry/status", async () => {
     path = String(url);
     return jsonResponse(200, {
       enabled: true,
-      chainId: 46630,
+      chainId: TESTNET_CHAIN_ID,
       contractAddress: "0x1234567890123456789012345678901234567890",
       explorerBase: "https://explorer.testnet.chain.robinhood.com",
       network: "Robinhood Testnet",
@@ -36,7 +37,7 @@ test("getRegistryStatus calls /registry/status", async () => {
   const status = await client.getRegistryStatus();
   assert.ok(path.endsWith("/registry/status"));
   assert.equal(status.enabled, true);
-  assert.equal(status.chainId, 46630);
+  assert.equal(status.chainId, TESTNET_CHAIN_ID);
 });
 
 test("prepareObjectiveRegistry POSTs prepare-register path", async () => {
@@ -46,7 +47,7 @@ test("prepareObjectiveRegistry POSTs prepare-register path", async () => {
     path = String(url);
     method = init?.method ?? "GET";
     return jsonResponse(200, {
-      chainId: 46630,
+      chainId: TESTNET_CHAIN_ID,
       contractAddress: "0x1234567890123456789012345678901234567890",
       explorerBase: "https://explorer.testnet.chain.robinhood.com",
       objectiveId: "obj_test",
